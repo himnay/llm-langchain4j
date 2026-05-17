@@ -1,6 +1,7 @@
 package com.infiproton.springaidemo.service;
 
 import com.infiproton.springaidemo.model.TravelPlan;
+import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -11,15 +12,13 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class TravelGuideService {
 
     private final ChatClient chatClient;
+
     @Value("classpath:prompts/travel-guide.st")
     private Resource travelGuideTemplate;
-
-    TravelGuideService(ChatClient chatClient) {
-        this.chatClient = chatClient;
-    }
 
     public TravelPlan prepareTravelPlan(String city, Integer days) {
         PromptTemplate template = new PromptTemplate(travelGuideTemplate);

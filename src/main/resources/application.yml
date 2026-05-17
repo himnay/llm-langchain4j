@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: Spring AI Demo
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+    stabilityai:
+      api-key: ${STABILITYAI_API_KEY}
+      image:
+        options:
+          model: stable-diffusion-xl-1024-v1-0
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
+    vectorstore:
+      redis:
+        initialize-schema: true
+  datasource:
+    url: jdbc:postgresql://localhost:5432/spring_ai
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+app:
+  weather:
+    api-key: ${WEATHER_API_KEY}
+  documents:
+    travel-policy:
+      file:
+        path: documents/AtlasCorp-TravelPolicy.pdf
+    events:
+      file:
+        path: documents/AtlasCorp_Events_Holidays.pdf

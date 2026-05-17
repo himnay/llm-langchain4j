@@ -6,10 +6,9 @@ import com.infiproton.springaidemo.rag.VectorStoreService;
 import com.infiproton.springaidemo.service.AudioService;
 import com.infiproton.springaidemo.service.ChatService;
 import com.infiproton.springaidemo.service.TravelGuideService;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,15 +21,14 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/ai")
-@AllArgsConstructor
+@RequiredArgsConstructor
 class ChatController {
 
     private final ChatService chatService;
     private final TravelGuideService travelGuideService;
     private final VectorStoreService vectorStoreService;
     private final AudioService audioService;
-    @Autowired
-    private ChatMemory chatMemory;
+    private final ChatMemory chatMemory;
 
     @PostMapping("/chat/audio/voice")
     public ResponseEntity<byte[]> voiceChat(@RequestParam("file") MultipartFile file) {
@@ -83,12 +81,12 @@ class ChatController {
 
     @PostMapping("/chat")
     public String chat(@RequestBody ChatRequest chatRequest) {
-        return chatService.chat(chatRequest.getConversationId(), chatRequest.getMessage());
+        return chatService.chat(chatRequest.conversationId(), chatRequest.message());
     }
 
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> streamChat(@RequestBody ChatRequest chatRequest) {
-        return chatService.streamChat(chatRequest.getMessage());
+        return chatService.streamChat(chatRequest.message());
     }
 
 

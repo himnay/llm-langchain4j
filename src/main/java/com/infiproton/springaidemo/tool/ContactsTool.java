@@ -1,6 +1,7 @@
 package com.infiproton.springaidemo.tool;
 
 import com.infiproton.springaidemo.model.Contact;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -9,14 +10,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-@Component
 @Slf4j
+@Component
+@RequiredArgsConstructor
 public class ContactsTool {
-    private final JdbcTemplate jdbcTemplate;
 
-    public ContactsTool(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-    }
+    private final JdbcTemplate jdbcTemplate;
 
     @Tool(description = "Find contacts in a given city")
     public List<Contact> findContactsByCity(String city) {

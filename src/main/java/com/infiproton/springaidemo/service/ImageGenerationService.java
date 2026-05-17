@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class ImageGenerationService {
+
     private final ImageModel imageModel;
 
     public ImageGenerationService(@Qualifier("stabilityAiImageModel") ImageModel imageModel) {

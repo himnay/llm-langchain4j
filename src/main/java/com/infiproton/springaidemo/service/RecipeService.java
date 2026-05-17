@@ -1,18 +1,19 @@
 package com.infiproton.springaidemo.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class RecipeService {
-    @Autowired
-    private ChatClient chatClient;
+
+    private final ChatClient chatClient;
 
     public String getDraftRecipe(String dish) {
         Prompt draftPrompt = new Prompt(

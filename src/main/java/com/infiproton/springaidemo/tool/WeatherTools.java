@@ -34,10 +34,10 @@ public class WeatherTools {
             }
 
             // Extract forecast
-            ForecastResponse.ForecastDay forecastDay = apiResponse.getForecast().getForecastday().get(0);
+            ForecastResponse.ForecastDay forecastDay = apiResponse.forecast().forecastday().get(0);
 
-            String condition = forecastDay.getDay().getCondition().getText();
-            double tempC = forecastDay.getDay().getAvgtemp_c();
+            String condition = forecastDay.day().condition().text();
+            double tempC = forecastDay.day().avgtempC();
             return new WeatherResult(city, date, tempC + " °C", condition);
         } catch (Exception e) {
             log.error("Error fetching weather for {} on {}: {}", city, date, e.getMessage(), e);
