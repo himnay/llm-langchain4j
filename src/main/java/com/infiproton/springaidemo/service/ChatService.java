@@ -45,11 +45,13 @@ public class ChatService {
         MessageChatMemoryAdvisor messageChatMemoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory)
                 .conversationId(convId)
                 .build();
+
         return chatClient.prompt(prompt)
-                .advisors(new QuestionAnswerAdvisor(vectorStore), messageChatMemoryAdvisor)
+                .advisors(messageChatMemoryAdvisor)
                 .tools(weatherTools, contactsTool)
                 .user(message)
-                .call().content();
+                .call()
+                .content();
     }
 
     public Flux<String> streamChat(String message) {
