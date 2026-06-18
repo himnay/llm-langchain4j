@@ -1,9 +1,18 @@
 # LLM Chat — Spring AI Production-Grade Backend
 
-A Spring AI **chat** service demonstrating production patterns: multi-turn chat with persistent
-memory, streaming, audio (transcription / TTS / voice chat), image captioning + generation,
-PDF/file reading and a guarded natural-language **text-to-SQL** endpoint — all behind API-key
-auth, rate limiting and a full metrics/traces/logs observability stack.
+A Maven **multi-module** reactor demonstrating production Spring AI patterns, split into three
+independently runnable modules:
+
+| Module | Port | Responsibility |
+|---|---|---|
+| [`llm-chat-agent`](./llm-chat-agent) | 8082 | Multi-turn chat with persistent memory, streaming, RAG, PDF/file reading, a guarded natural-language **text-to-SQL** endpoint, travel-guide and recipe demos |
+| [`llm-audio`](./llm-audio) | 8083 | Audio transcription (Whisper), text-to-speech, and voice chat (calls `llm-chat-agent` over HTTP for the AI reply) |
+| [`llm-image`](./llm-image) | 8084 | Image captioning (multimodal chat) and AI image generation (Stability AI / gateway DALL·E) |
+
+All three share this repo's root `pom.xml` (a reactor parent extending `super-pom`), Maven
+wrapper, and `docker-compose.yml` (Postgres, Redis, observability stack). Each module is its own
+Spring Boot app with its own `application.yml`, API-key auth, and database (`spring_ai`,
+`spring_ai_audio`, `spring_ai_image` — see `observability/init-db/`).
 
 > Sibling services: [`llm-gateway`](../llm-gateway) (multi-provider routing + guardrails) and
 > [`llm-rag-pipeline`](../llm-rag-pipeline) (ingestion + retrieval). This repo follows the same
@@ -18,27 +27,27 @@ auth, rate limiting and a full metrics/traces/logs observability stack.
 - **Spring Security** — API-key authentication (`X-API-Key`) + in-memory rate limiting
 - **Observability**: Micrometer + Prometheus + Grafana + Tempo (traces) + Loki (logs)
 
-## 🏗️ Layout (`com.org.llm.*`)
+## 🏗️ Layout
 
-- `controller/` — REST endpoints (chat, audio, image, file, recipe, text-to-sql).
-- `service/` — application layer per capability (`ChatService`, `TravelGuideService`,
-  `AudioService`, `VoiceChatService` — a facade over the validate → store → transcribe →
-  chat → synthesize pipeline, `TextToSqlService`, …).
-- `backend/` — **Strategy** pattern for where LLM work executes: `ChatBackend`,
-  `TravelPlanBackend` and `ImageBackend` each have a `Gateway*` and a `Local*` implementation;
-  exactly one is active per run, selected at startup by `app.gateway.enabled`
-  (`@ConditionalOnProperty`).
-- `security/` — API-key auth: `ApiKeyService` (SHA-256 hashes in the `api_keys` table),
-  `ApiKeyAuthFilter`, `RateLimitFilter`, `SecurityConfig` (headers + CORS),
-  `RestAuthenticationEntryPoint` (401 JSON).
-- `exception/` — `GlobalExceptionHandler` + `ApiError` (consistent JSON error payloads).
-  Custom hierarchy: `ValidationException` → `AudioValidationException` (audio file checks),
-  `SqlValidationException` (SQL guard checks). Each maps to HTTP 400 with a distinct error label.
-- `config/` — `AIConfig` (ChatClient + advisors), `RedisConfig`, `ObservabilityConfig`
-  (`@Timed`/`@Observed` aspects + JVM-extras), `StartupValidator` (fail-loud on missing keys).
-- `validation/` — `SqlValidator` (read-only/allow-list SQL guard), `AudioValidator`.
-- `common/Resilience` — tiny retry-with-backoff helper for transient outbound failures.
-- `tool/` — Spring AI tools (weather, contacts).
+Each module is a self-contained Spring Boot app under `com.org.llm.*`; the package name repeats
+across modules but they never share a classpath at runtime.
+
+- **`llm-chat-agent/`** — `controller/` (chat, file, recipe, text-to-sql, RAG query-transform
+  playground), `service/` (`ChatService`, `TravelGuideService`, `TextToSqlService`,
+  `FileReadService`, …), `backend/` — **Strategy** pattern for where chat/travel-guide work
+  executes (`ChatBackend`, `TravelPlanBackend`, each with a `Gateway*` and a `Local*`
+  implementation, selected at startup by `app.gateway.enabled`), `rag/` (query transformer
+  strategies + `RagFilterContext`), `tool/` (weather, contacts), `config/` (`AIConfig`,
+  `RagConfig`, `RedisConfig`, `StartupValidator`).
+- **`llm-audio/`** — `controller/` (`AudioController`, `VoiceChatController`), `service/`
+  (`AudioService`, `VoiceChatService` — validate → store → transcribe → chat → synthesize),
+  `client/ChatAgentClient` (calls `llm-chat-agent`'s `/chat` endpoint over HTTP for the AI reply).
+- **`llm-image/`** — `controller/ImageRestController`, `service/ImageCaptionService`,
+  `backend/ImageBackend` (`Gateway*`/`Local*` Stability AI strategy).
+- **Shared per module** (each module has its own copy — they're separate deployables, not a
+  shared library): `security/` (`ApiKeyService`, `ApiKeyAuthFilter`, `RateLimitFilter`,
+  `SecurityConfig`, `RestAuthenticationEntryPoint`), `exception/` (`GlobalExceptionHandler` +
+  `ApiError`), `web/RequestIdFilter`, `config/ObservabilityConfig` + `AsyncConfig`.
 
 ## 🚀 Getting Started
 
@@ -52,40 +61,47 @@ docker compose up -d        # Postgres, Redis, RedisInsight + Prometheus/Grafana
 
 ```bash
 export OPENAI_API_KEY=sk-...
-export STABILITYAI_API_KEY=sk-...     # only for image generation
-export WEATHER_API_KEY=...            # only for the weather tool
+export STABILITYAI_API_KEY=sk-...     # only for llm-image generation
+export WEATHER_API_KEY=...            # only for llm-chat-agent's weather tool
 ```
 
-### 3. Run
+### 3. Run each module you need
 
 ```bash
-./mvnw spring-boot:run
+./mvnw -pl llm-chat-agent spring-boot:run    # port 8082
+./mvnw -pl llm-audio spring-boot:run         # port 8083 — calls llm-chat-agent for voice-chat replies
+./mvnw -pl llm-image spring-boot:run         # port 8084
 ```
 
-The app serves under context path **`/ai`** on port **8082** (e.g. http://localhost:8082/ai).
+Or build/test the whole reactor from the root: `./mvnw verify`. Each module serves under context
+path **`/ai`** on its own port (e.g. http://localhost:8082/ai).
 
 ## 🔑 Authentication
 
-- API-key auth is **enabled by default** — every request must include `X-API-Key` in the header
+- API-key auth is **enabled by default** in every module — each request must include `X-API-Key`
 - Excluded from auth: actuator endpoints, the demo static HTML pages, and `/error`
-- Keys are stored as SHA-256 hashes in the `api_keys` PostgreSQL table — raw values are never persisted
-- Flyway seeds a **development key** (`V5__create_api_keys.sql`) ready to use immediately:
+- Keys are stored as SHA-256 hashes in each module's own `api_keys` PostgreSQL table (separate
+  databases — `spring_ai`, `spring_ai_audio`, `spring_ai_image` — so a key minted for one module
+  doesn't work on another) — raw values are never persisted
+- Flyway seeds a **development key** per module, ready to use immediately:
 
 ```
-X-API-Key: llm-chat-dev-key-2026
+llm-chat-agent: X-API-Key: llm-chat-dev-key-2026
+llm-audio:      X-API-Key: llm-audio-dev-key-2026
+llm-image:      X-API-Key: llm-image-dev-key-2026
 ```
 
 ```bash
-curl -s "http://localhost:8082/ai/recipe?ingredients=eggs,flour" \
+curl -s "http://localhost:8082/ai/api/v1/recipe?ingredients=eggs,flour" \
   -H "X-API-Key: llm-chat-dev-key-2026"
 ```
 
-Mint a real key:
+Mint a real key (against the relevant module's database):
 
 ```bash
 raw=$(openssl rand -hex 32)
 hash=$(printf "%s" "$raw" | shasum -a 256 | cut -d' ' -f1)
-psql -h localhost -U postgres -d llm_chat \
+psql -h localhost -U postgres -d spring_ai \
   -c "INSERT INTO api_keys (key_hash, label) VALUES ('$hash', 'my-client');"
 echo "X-API-Key: $raw"
 ```
@@ -95,40 +111,54 @@ echo "X-API-Key: $raw"
 
 ## 🔀 Routing through llm-gateway
 
-- By default (`app.gateway.enabled=true`), chat, structured travel-guide, and image generation are **routed through `llm-gateway`** rather than calling OpenAI/Stability directly
-- The gateway owns provider API keys, guardrails, failover logic, and per-session memory — centralising those concerns outside this service
-- When `GATEWAY_ENABLED=false`, this service calls providers directly (the original behaviour)
-- Image captioning, audio transcription/TTS, and file reading **always run locally** — the gateway exposes no such endpoints
+- By default (`app.gateway.enabled=true`), `llm-chat-agent`'s chat/structured travel-guide and
+  `llm-image`'s image generation are **routed through `llm-gateway`** rather than calling
+  OpenAI/Stability directly
+- The gateway owns provider API keys, guardrails, failover logic, and per-session memory — centralising those concerns outside these services
+- When `GATEWAY_ENABLED=false`, the module calls its provider directly (the original behaviour)
+- `llm-image`'s captioning, `llm-audio`'s transcription/TTS, and `llm-chat-agent`'s file reading **always run locally** — the gateway exposes no such endpoints
 
-| llm-chat flow                | Gateway call                          |
-|------------------------------|---------------------------------------|
-| `/chat`, audio chat          | `POST /llm/chat` (session = `conversationId`) |
-| `/chat/stream`               | `POST /llm/{provider}/stream` (SSE)   |
-| `/chat/travel-guide`         | `POST /llm/query` (strict-JSON → `TravelPlan`) |
-| `/image/generate`            | `POST /llm/image` (OpenAI DALL·E)     |
+| Flow                                  | Gateway call                          |
+|----------------------------------------|---------------------------------------|
+| `llm-chat-agent` `/chat`               | `POST /llm/chat` (session = `conversationId`) |
+| `llm-chat-agent` `/chat/stream`        | `POST /llm/{provider}/stream` (SSE)   |
+| `llm-chat-agent` `/chat/travel-guide`  | `POST /llm/query` (strict-JSON → `TravelPlan`) |
+| `llm-image` `/images/generate`         | `POST /llm/image` (OpenAI DALL·E)     |
 
-- Configure via `app.gateway.*` env vars: `GATEWAY_ENABLED`, `GATEWAY_BASE_URL`, `GATEWAY_API_KEY`, `GATEWAY_PROVIDER`, `GATEWAY_MODEL`, `GATEWAY_IMAGE_MODEL`
-- Recommended run order for the full stack: start `llm-gateway` on port 8080 first, then this service on port 8082
+- Configure via `app.gateway.*` env vars: `GATEWAY_ENABLED`, `GATEWAY_BASE_URL`, `GATEWAY_API_KEY`, `GATEWAY_PROVIDER`, `GATEWAY_MODEL` (`llm-image` also has `GATEWAY_IMAGE_MODEL`)
+- Recommended run order for the full stack: `llm-gateway` (8080) → `llm-chat-agent` (8082) → `llm-audio` (8083) / `llm-image` (8084)
 
-## 📡 Endpoints (under `/ai`)
+## 📡 Endpoints
+
+### `llm-chat-agent` (port 8082, under `/ai`)
 
 | Method | Path                  | Description                                    |
 |--------|-----------------------|------------------------------------------------|
-| POST   | `/chat`               | Multi-turn chat (memory via `conversationId`)  |
-| POST   | `/chat/stream`        | Server-sent streaming chat                     |
-| GET    | `/chat/memory`        | Inspect conversation memory                    |
-| GET    | `/chat/travel-guide`  | Structured travel-guide response               |
-| POST   | `/chat/audio`         | Chat with audio input                          |
-| POST   | `/chat/audio/voice`   | Voice-to-voice chat                            |
-| POST   | `/audio/to-text`      | Transcribe audio                               |
-| POST   | `/audio/to-speech`    | Text-to-speech                                 |
-| POST   | `/audio/upload`       | Upload + process an audio file                 |
-| POST   | `/image/caption`      | Caption an image                               |
-| GET    | `/image/generate`     | Generate an image (gateway DALL·E, or Stability if gateway off) |
-| POST   | `/file/read`          | Read/summarise an uploaded file                |
-| GET    | `/recipe`             | Generate a recipe from ingredients             |
-| POST   | `/text-to-sql`        | NL → guarded read-only SQL + results           |
-| POST   | `/rag/query-transform` | Run a query through a single pre-retrieval transformer (rewrite/translate/compress/multi-query-expand) |
+| POST   | `/api/v1/chat`               | Multi-turn chat (memory via `conversationId`)  |
+| POST   | `/api/v1/chat/stream`        | Server-sent streaming chat                     |
+| GET    | `/api/v1/chat/memory`        | Inspect conversation memory                    |
+| GET    | `/api/v1/chat/travel-guide`  | Structured travel-guide response               |
+| POST   | `/api/v1/files/read`          | Read/summarise an uploaded file                |
+| GET    | `/api/v1/recipe`             | Generate a recipe from ingredients             |
+| POST   | `/api/v1/text-to-sql`        | NL → guarded read-only SQL + results           |
+| POST   | `/api/v1/rag/query-transform` | Run a query through a single pre-retrieval transformer (rewrite/translate/compress/multi-query-expand) |
+
+### `llm-audio` (port 8083, under `/ai`)
+
+| Method | Path                  | Description                                    |
+|--------|-----------------------|------------------------------------------------|
+| POST   | `/api/v1/chat/audio`         | Chat with audio input (calls `llm-chat-agent` for the reply) |
+| POST   | `/api/v1/chat/audio/voice`   | Voice-to-voice chat                            |
+| POST   | `/api/v1/audio/to-text`      | Transcribe audio                               |
+| POST   | `/api/v1/audio/to-speech`    | Text-to-speech                                 |
+| POST   | `/api/v1/audio/upload`       | Upload + process an audio file                 |
+
+### `llm-image` (port 8084, under `/ai`)
+
+| Method | Path                  | Description                                    |
+|--------|-----------------------|------------------------------------------------|
+| POST   | `/api/v1/images/caption`      | Caption an image                               |
+| GET    | `/api/v1/images/generate`     | Generate an image (gateway DALL·E, or Stability if gateway off) |
 
 ## 📊 Observability
 
@@ -206,7 +236,8 @@ This section explains every significant library, framework, database, and infras
 - **`OpenAiAudioTranscriptionModel` / `OpenAiAudioSpeechModel`** are injected directly into `AudioService` to call Whisper (speech-to-text) and TTS-1 (text-to-speech) via Spring AI's audio abstraction
 - **`spring-ai-pdf-document-reader`, `spring-ai-markdown-document-reader`, `spring-ai-tika-document-reader`** are available for the file-reading and RAG-backed advisor flows
 - **`spring-ai-starter-vector-store-redis`** wires a Redis vector store that the RAG advisor can query for context from uploaded PDFs
-- **`spring-ai-rag`** provides the modular RAG building blocks — `RetrievalAugmentationAdvisor`, `VectorStoreDocumentRetriever`, `ContextualQueryAugmenter`, and the pre-retrieval query transformers/expander (`CompressionQueryTransformer`, `RewriteQueryTransformer`, `TranslationQueryTransformer`, `MultiQueryExpander`) — used to make retrieval history-aware and exposed individually via the query-transformation playground (see below)
+- **`spring-ai-rag`** provides the modular RAG building blocks — `RetrievalAugmentationAdvisor`, `VectorStoreDocumentRetriever`, `ConcatenationDocumentJoiner`, `ContextualQueryAugmenter`, and the pre-retrieval query transformers/expander (`CompressionQueryTransformer`, `RewriteQueryTransformer`, `TranslationQueryTransformer`, `MultiQueryExpander`) — used to make retrieval history-aware and exposed individually via the query-transformation playground (see below)
+- **`FilterExpressionBuilder`** (from `spring-ai-vector-store`) scopes a single chat turn's retrieval to one document by `fileName` metadata, via `RagFilterContext` (see "Per-request document filtering" below)
 - **`PromptTemplate`** loads the `travel-guide.st` StringTemplate file and fills `{city}` / `{days}` placeholders before passing the prompt to the travel-plan backend
 - **`@Tool`** on `WeatherTools.getWeather` and `ContactsTool.findContactsByCity` registers those methods as callable functions the LLM can invoke during a chat turn
 
@@ -222,9 +253,9 @@ The three default advisors fire in a fixed order on every `ChatClient` call:
 
 `SafeGuardAdvisor.order(Integer.MIN_VALUE)` guarantees the guard fires before memory is even consulted — a blocked request never touches the database.
 
-**History-aware RAG on the streaming endpoint**
+**History-aware RAG on the chat and streaming endpoints**
 
-`LocalChatBackend.stream()` attaches a `RetrievalAugmentationAdvisor` on every streaming call (configured in `AIConfig`):
+`LocalChatBackend.chat()` / `.stream()` attach a `RetrievalAugmentationAdvisor` on every call (configured in `RagConfig`):
 
 ```java
 chatClient.prompt()
@@ -235,38 +266,53 @@ chatClient.prompt()
     ...
 ```
 
-Multi-turn messages ("what about the second one?") have no standalone meaning, so embedding them as-is against the vector store returns poor matches. `AIConfig` wires the advisor as a small **retrieve → filter → augment → generate** pipeline instead of a single opaque step:
+Multi-turn messages ("what about the second one?") have no standalone meaning, so embedding them as-is against the vector store returns poor matches, and a single phrasing of a query can miss relevant chunks that use different wording. `RagConfig` wires the advisor as a **compress → expand → retrieve (per variant) → join → augment → generate** pipeline instead of a single opaque step:
 
 ```java
 @Bean
-public QueryTransformer compressionQueryTransformer(OpenAiChatModel openAiChatModel) {
-    // Temperature 0 keeps the standalone-query rewrite deterministic; a separate
-    // ChatClient.Builder so it never touches the main conversation's options.
-    ChatClient.Builder compressionClientBuilder = ChatClient.builder(openAiChatModel)
-            .defaultOptions(OpenAiChatOptions.builder().temperature(0.0));
-    return CompressionQueryTransformer.builder()
-            .chatClientBuilder(compressionClientBuilder)
-            .build();
-}
-
-@Bean
 public RetrievalAugmentationAdvisor retrievalAugmentationAdvisor(VectorStore vectorStore,
-                                                                   QueryTransformer compressionQueryTransformer) {
+                                                                  CompressionQueryTransformer compressionQueryTransformer,
+                                                                  MultiQueryExpander multiQueryExpander,
+                                                                  RagFilterContext ragFilterContext) {
     return RetrievalAugmentationAdvisor.builder()
             .queryTransformers(compressionQueryTransformer)
+            .queryExpander(multiQueryExpander)
             .documentRetriever(VectorStoreDocumentRetriever.builder()
                     .vectorStore(vectorStore)
+                    .filterExpression(ragFilterContext::get)
                     .build())
+            .documentJoiner(new ConcatenationDocumentJoiner())
             .queryAugmenter(ContextualQueryAugmenter.builder().allowEmptyContext(true).build())
             .build();
 }
 ```
 
-Because `RetrievalAugmentationAdvisor` is added per-call *after* the chat client's default `MessageChatMemoryAdvisor`, the prompt it sees already has the last 50 messages for the conversation prepended. `CompressionQueryTransformer` folds that history plus the current message into one standalone query with an LLM call (e.g. *"what about the second one?"* → *"What are the details of the second leave type in NexaCorp's leave policy?"*), `VectorStoreDocumentRetriever` embeds **that** compressed query and searches the Redis index (pre-loaded from `AtlasCorp-TravelPolicy.pdf` and `AtlasCorp_Events_Holidays.pdf`), and `ContextualQueryAugmenter` injects the retrieved chunks as a `SYSTEM` context block before the first token is streamed.
+Because `RetrievalAugmentationAdvisor` is added per-call *after* the chat client's default `MessageChatMemoryAdvisor`, the prompt it sees already has the last 50 messages for the conversation prepended.
+
+1. `CompressionQueryTransformer` folds that history plus the current message into one standalone query with an LLM call (e.g. *"what about the second one?"* → *"What are the details of the second leave type in NexaCorp's leave policy?"*)
+2. `MultiQueryExpander` takes that standalone query and generates 3 paraphrased variants plus the original (`numberOfQueries(3)`, `includeOriginal(true)`), to improve recall against phrasing-sensitive embeddings
+3. `VectorStoreDocumentRetriever` embeds **each** variant and searches the Redis index (pre-loaded from `AtlasCorp-TravelPolicy.pdf` and `AtlasCorp_Events_Holidays.pdf`) independently, optionally narrowed by the active `RagFilterContext` filter (see below)
+4. `ConcatenationDocumentJoiner` merges the per-variant result lists into one deduplicated document set
+5. `ContextualQueryAugmenter` injects the joined chunks as a `SYSTEM` context block before the first token is streamed
 
 Two things worth calling out:
-- Compression only changes what's sent to the retriever — the user's original message text is still what gets stored in `ChatMemory`, so conversation history isn't silently rewritten.
+- Compression and expansion only change what's sent to the retriever — the user's original message text is still what gets stored in `ChatMemory`, so conversation history isn't silently rewritten.
 - `allowEmptyContext(true)` keeps the advisor permissive: if retrieval finds nothing relevant (e.g. small talk), the model still answers instead of refusing.
+
+**Per-request document filtering (`FilterExpressionBuilder`)**
+
+`ChatRequest.documentSource` lets a caller scope a single chat turn's retrieval to one pre-loaded document, instead of searching across all of them:
+
+```json
+POST /api/v1/chat
+{
+  "conversationId": "conv-1",
+  "message": "How many days of annual leave do I get?",
+  "documentSource": "AtlasCorp-TravelPolicy.pdf"
+}
+```
+
+The `VectorStoreDocumentRetriever` bean in `RagConfig` is a singleton, but the filter is per-request, so it can't be passed as a fixed builder argument. Instead, `filterExpression(Supplier<Filter.Expression>)` is wired to `ragFilterContext::get` — a `ThreadLocal` holder (`com.org.llm.rag.RagFilterContext`). `LocalChatBackend` builds a `Filter.Expression` with `new FilterExpressionBuilder().eq("fileName", documentSource).build()` when `documentSource` is present, calls `ragFilterContext.set(...)` before invoking the `ChatClient`, and clears it in a `finally`/`doFinally` block once the call (or stream) completes. When `documentSource` is absent, the supplier returns `null` and retrieval is unfiltered, as before.
 
 **Conversation ID flow**
 
@@ -308,7 +354,7 @@ POST /api/v1/rag/query-transform
 
 **Design — Strategy pattern.** Each technique is a `com.org.llm.rag.QueryTransformationStrategy` bean (`RewriteQueryStrategy`, `TranslateQueryStrategy`, `CompressQueryStrategy`, `MultiQueryExpansionStrategy`), tagged by a `QueryTransformationTechnique` enum value. `QueryTransformationService` collects all of them via constructor injection (`List<QueryTransformationStrategy>`) into a `Map<QueryTransformationTechnique, QueryTransformationStrategy>` and dispatches each request to the matching one — no `if`/`switch` chain, and adding a fifth technique (e.g. HyDE or step-back prompting) only means adding one more `@Component`, nothing else changes. The four underlying transformer/expander beans live in `RagConfig`, built from a shared low-temperature `ChatClient.Builder` (`ragChatClientBuilder`) so transformation calls stay deterministic and never touch the main conversation's options. `RewriteQueryTransformer` and `MultiQueryExpander` are configured once as singletons; `TranslationQueryTransformer` is built per-request inside its strategy because `targetLanguage` varies per call.
 
-This endpoint is a playground for inspecting each technique's raw output — it does not itself touch the vector store. The production retrieval path (`LocalChatBackend.stream()`) only wires in `CompressionQueryTransformer`, via the `RetrievalAugmentationAdvisor` bean described above.
+This endpoint is a playground for inspecting each technique's raw output — it does not itself touch the vector store. The production retrieval path (`LocalChatBackend.chat()` / `.stream()`) wires `CompressionQueryTransformer` and `MultiQueryExpander` together via the `RetrievalAugmentationAdvisor` bean described above.
 
 ---
 
@@ -321,11 +367,11 @@ This endpoint is a playground for inspecting each technique's raw output — it 
 
 **How it's used here.**
 
-- When `app.gateway.enabled=false` (direct mode), `LocalChatBackend` calls OpenAI's chat-completion API via `ChatClient`
-- `LocalImageBackend` calls the image endpoint via the Stability AI or OpenAI image model
-- `AudioService` calls Whisper with model `whisper-1` for transcription and `tts-1` with voice `echo` for speech synthesis
-- The API key is read from `OPENAI_API_KEY` and kept only in Spring AI auto-configuration — it never appears in business code
-- `StartupValidator` fails the application at boot if the key is missing, giving an immediate and unambiguous error
+- In `llm-chat-agent`, when `app.gateway.enabled=false` (direct mode), `LocalChatBackend` calls OpenAI's chat-completion API via `ChatClient`
+- In `llm-image`, `LocalImageBackend` calls the image endpoint via the Stability AI or OpenAI image model
+- In `llm-audio`, `AudioService` calls Whisper with model `whisper-1` for transcription and `tts-1` with voice `echo` for speech synthesis
+- The API key is read from `OPENAI_API_KEY` (each module reads its own copy of the env var) and kept only in Spring AI auto-configuration — it never appears in business code
+- Each module's own `StartupValidator` fails the application at boot if its required key is missing, giving an immediate and unambiguous error
 
 ---
 
@@ -338,8 +384,8 @@ This endpoint is a playground for inspecting each technique's raw output — it 
 
 **How it's used here.**
 
-- `LocalImageBackend` calls `StabilityAiImageModel` to generate images when the gateway is disabled
-- The configured model is `stable-diffusion-xl-1024-v1-0`, set in `application.yml` under `spring.ai.stabilityai.image.options.model`
+- `llm-image`'s `LocalImageBackend` calls `StabilityAiImageModel` to generate images when the gateway is disabled
+- The configured model is `stable-diffusion-xl-1024-v1-0`, set in `llm-image/application.yml` under `spring.ai.stabilityai.image.options.model`
 - When the gateway is enabled, image generation is re-routed through `GatewayImageBackend`, which calls the gateway's `/llm/image` endpoint requesting DALL·E 3 instead
 
 ---
@@ -350,14 +396,20 @@ This endpoint is a playground for inspecting each technique's raw output — it 
 
 - PostgreSQL is an open-source relational database; version 18 stores data in a versioned sub-directory inside the data volume, which is why the Docker volume mounts the parent path `/var/lib/postgresql`
 
-**How it's used here.** The database (`llm_chat`) holds five concerns managed entirely through Flyway migrations:
+**How it's used here.** A single Postgres instance (from the root `docker-compose.yml`) hosts one
+database per module, each with its own Flyway history table so migrations never collide:
 
-| Table | Purpose |
-|---|---|
-| `spring_ai_chat_memory` | Chat history rows written by `JdbcChatMemoryRepository` (auto-created by Spring AI) |
-| `contacts` | Seed data for the contacts tool (`ContactsTool.findContactsByCity`) |
-| `text2sql_customers / products / orders / order_items` | Demo e-commerce schema the text-to-SQL endpoint queries |
-| `api_keys` | SHA-256 hashes of REST API keys validated by `ApiKeyService` |
+| Database | Module | Tables |
+|---|---|---|
+| `spring_ai` | `llm-chat-agent` | `spring_ai_chat_memory` (chat history, auto-created by Spring AI), `contacts` (weather/contacts tool seed data), `text2sql_customers / products / orders / order_items` (demo e-commerce schema), `api_keys` |
+| `spring_ai_audio` | `llm-audio` | `api_keys` |
+| `spring_ai_image` | `llm-image` | `api_keys` |
+
+The `spring_ai_audio` and `spring_ai_image` databases are created on first container start by
+`observability/init-db/01-create-module-databases.sql` (mounted into
+`/docker-entrypoint-initdb.d`) — drop the `postgres_data` volume to re-run it against a fresh
+instance. Each module's `api_keys` table is independent, so a key minted for one module doesn't
+authenticate against another.
 
 - `JdbcTemplate` (no ORM) is used for all custom SQL: key lookups, contacts queries, text-to-SQL execution, and schema introspection at runtime
 - The `pgcrypto` extension is enabled in migration V5 to hash the development seed key inline

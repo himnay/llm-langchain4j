@@ -3,16 +3,19 @@ services:
     image: postgres:18
     container_name: llm-postgres
     environment:
-      POSTGRES_DB: llm_chat
+      POSTGRES_DB: spring_ai
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql   # PG18+ stores data in a versioned subdir; mount the parent
+      # Runs once, only when the volume is first initialized — creates the extra per-service
+      # databases used by the llm-audio and llm-image modules (llm-chat-agent uses POSTGRES_DB).
+      - ./observability/init-db:/docker-entrypoint-initdb.d:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d llm_chat"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d spring_ai"]
       interval: 10s
       timeout: 5s
       retries: 5

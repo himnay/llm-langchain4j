@@ -10,20 +10,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    # The context-load test boots the full app: Flyway migrations + JDBC chat memory
-    # need Postgres, and the Redis connection factory needs Redis. LLM keys are stubbed
-    # (no live calls happen during context load).
+    # The context-load test boots llm-chat-agent: Flyway migrations + JDBC chat memory need
+    # Postgres, and the Redis connection factory needs Redis. llm-audio and llm-image each need
+    # their own database (created in the "Create per-module databases" step below) but no Redis.
+    # LLM keys are stubbed (no live calls happen during context load).
     services:
       postgres:
         image: postgres:18
         env:
-          POSTGRES_DB: llm_chat
+          POSTGRES_DB: spring_ai
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d llm_chat"
+          --health-cmd "pg_isready -U postgres -d spring_ai"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -46,6 +47,11 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+
+      - name: Create per-module databases
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE spring_ai_audio;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE spring_ai_image;"
 
       - name: Build & test
         run: ./mvnw -B verify
