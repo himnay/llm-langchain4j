@@ -3,8 +3,8 @@ package com.org.llm.service;
 import com.org.llm.model.TextToSqlRequest;
 import com.org.llm.model.TextToSqlResponse;
 import com.org.llm.validation.SqlValidator;
+import dev.langchain4j.model.chat.ChatModel;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -15,7 +15,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class TextToSqlService {
 
-    private final ChatClient chatClient;
+    private final ChatModel chatModel;
     private final JdbcTemplate jdbcTemplate;
     private final SqlValidator sqlValidator;
 
@@ -72,10 +72,7 @@ public class TextToSqlService {
                 %s
                 """.formatted(maxRows, schemaContext, question);
 
-        return chatClient.prompt()
-                .user(prompt)
-                .call()
-                .content();
+        return chatModel.chat(prompt);
     }
 
     private String repairSql(String question, String sql, String error, String schemaContext, int maxRows) {
@@ -98,10 +95,7 @@ public class TextToSqlService {
                 %s
                 """.formatted(maxRows, question, sql, error, schemaContext);
 
-        return chatClient.prompt()
-                .user(prompt)
-                .call()
-                .content();
+        return chatModel.chat(prompt);
     }
 
     private String explainSql(String question, String sql) {
@@ -113,10 +107,7 @@ public class TextToSqlService {
                 SQL: %s
                 """.formatted(question, sql);
 
-        return chatClient.prompt()
-                .user(prompt)
-                .call()
-                .content();
+        return chatModel.chat(prompt);
     }
 
     private int normalizeMaxRows(Integer requestedMaxRows) {

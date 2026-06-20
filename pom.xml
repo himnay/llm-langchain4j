@@ -11,18 +11,37 @@
     </parent>
 
     <groupId>com.org.llm</groupId>
-    <artifactId>llm-chat</artifactId>
+    <artifactId>llm-langchain4j</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>llm-chat</name>
-    <description>Production-grade Spring AI backend, split into independently runnable Maven
-        modules: llm-chat-agent (chat, RAG, text-to-SQL), llm-audio (transcription, TTS, voice
-        chat) and llm-image (captioning, AI image generation).</description>
+    <name>llm-langchain4j</name>
+    <description>LangChain4j learning backend (ported from llm-chat's Spring AI implementation),
+        split into independently runnable Maven modules: llm-chat-agent (chat, RAG, text-to-SQL),
+        llm-audio (transcription, TTS, voice chat), llm-image (captioning, AI image generation)
+        and llm-playground (classification, extraction, summarization, moderation — LangChain4j
+        capabilities not otherwise exercised by the other modules).</description>
+
+    <properties>
+        <langchain4j-bom.version>1.16.3</langchain4j-bom.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-bom</artifactId>
+                <version>${langchain4j-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <modules>
         <module>llm-chat-agent</module>
         <module>llm-audio</module>
         <module>llm-image</module>
+        <module>llm-playground</module>
     </modules>
 
 </project>

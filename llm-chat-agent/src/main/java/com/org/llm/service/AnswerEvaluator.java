@@ -1,45 +1,44 @@
 package com.org.llm.service;
 
+import com.org.llm.assistant.FaithfulnessJudge;
+import com.org.llm.assistant.FaithfulnessVerdict;
+import dev.langchain4j.rag.content.Content;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.evaluation.FactCheckingEvaluator;
-import org.springframework.ai.document.Document;
-import org.springframework.ai.evaluation.EvaluationRequest;
-import org.springframework.ai.evaluation.EvaluationResponse;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * Faithfulness/groundedness check for RAG answers, mirroring
- * {@code llm-rag-pipeline}'s {@code GenerationEvaluator.isFaithful} — uses Spring AI's
- * {@link FactCheckingEvaluator} to verify every claim in the answer is entailed by the retrieved
- * context. Gated behind {@code app.rag.evaluate-faithfulness} (default {@code false}) since it
- * costs one extra LLM call per request; only worth running when there's actually RAG context to
- * check against.
+ * Faithfulness/groundedness check for RAG answers. LangChain4j ships no built-in evaluator
+ * equivalent to Spring AI's {@code FactCheckingEvaluator}, so this delegates to
+ * {@link FaithfulnessJudge}, a custom LLM-as-judge {@code AiServices} interface. Gated behind
+ * {@code app.rag.evaluate-faithfulness} (default {@code false}) since it costs one extra LLM call
+ * per request; only worth running when there's actually RAG context to check against.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AnswerEvaluator {
 
-    private final ChatClient.Builder ragChatClientBuilder;
+    private final FaithfulnessJudge faithfulnessJudge;
 
     /**
      * Returns {@code true}/{@code false} for whether {@code answer} is grounded in
-     * {@code context}, or {@code true} (fail-open) if the evaluator call itself errors.
+     * {@code context}, or {@code true} (fail-open) if the judge call itself errors.
      */
-    public boolean isFaithful(String question, List<Document> context, String answer) {
+    public boolean isFaithful(String question, List<Content> context, String answer) {
         try {
-            FactCheckingEvaluator evaluator = FactCheckingEvaluator.builder(ragChatClientBuilder).build();
-            EvaluationRequest request = new EvaluationRequest(question, context, answer);
-            EvaluationResponse response = evaluator.evaluate(request);
-            boolean pass = response.isPass();
-            log.debug("FactCheck: {} | question='{}'", pass ? "PASS" : "FAIL", question);
-            return pass;
+            String contextText = context.stream()
+                    .map(content -> content.textSegment().text())
+                    .collect(Collectors.joining("\n\n"));
+            FaithfulnessVerdict verdict = faithfulnessJudge.check(question, contextText, answer);
+            log.debug("FactCheck: {} | question='{}' | reasoning='{}'",
+                    verdict.pass() ? "PASS" : "FAIL", question, verdict.reasoning());
+            return verdict.pass();
         } catch (Exception e) {
-            log.warn("FactCheckingEvaluator failed ({}); defaulting to faithful=true", e.getMessage());
+            log.warn("FaithfulnessJudge failed ({}); defaulting to faithful=true", e.getMessage());
             return true;
         }
     }

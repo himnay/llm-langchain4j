@@ -1,22 +1,29 @@
 package com.org.llm.rag;
 
 import com.org.llm.model.QueryTransformRequest;
-import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.rag.Query;
-import org.springframework.ai.rag.preretrieval.query.transformation.TranslationQueryTransformer;
+import dev.langchain4j.model.chat.ChatModel;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/** Translates the query into the language of the indexed documents. */
+/**
+ * Translates the query into the language of the indexed documents.
+ *
+ * <p>LangChain4j has no built-in translation query transformer — this reproduces Spring AI's
+ * {@code TranslationQueryTransformer} with a direct prompt against the deterministic RAG chat
+ * model, built fresh per request since the target language varies per call.</p>
+ */
 @Component
-@RequiredArgsConstructor
 class TranslateQueryStrategy implements QueryTransformationStrategy {
 
     private static final String DEFAULT_TARGET_LANGUAGE = "English";
 
-    private final ChatClient.Builder ragChatClientBuilder;
+    private final ChatModel ragChatModel;
+
+    TranslateQueryStrategy(@Qualifier("ragChatModel") ChatModel ragChatModel) {
+        this.ragChatModel = ragChatModel;
+    }
 
     @Override
     public QueryTransformationTechnique technique() {
@@ -25,13 +32,13 @@ class TranslateQueryStrategy implements QueryTransformationStrategy {
 
     @Override
     public List<String> transform(QueryTransformRequest request) {
-        // Target language varies per request, so the transformer is built here rather than as a
-        // fixed singleton bean — building it is cheap, no LLM call happens until .transform() runs.
-        TranslationQueryTransformer translationQueryTransformer = TranslationQueryTransformer.builder()
-                .chatClientBuilder(ragChatClientBuilder)
-                .targetLanguage(request.targetLanguage() != null ? request.targetLanguage() : DEFAULT_TARGET_LANGUAGE)
-                .build();
-        Query translated = translationQueryTransformer.transform(new Query(request.query()));
-        return List.of(translated.text());
+        String targetLanguage = request.targetLanguage() != null ? request.targetLanguage() : DEFAULT_TARGET_LANGUAGE;
+        String prompt = """
+                Translate the query below into %s. Return ONLY the translated query — no markdown,
+                no explanation, no quotes.
+
+                Query: %s
+                """.formatted(targetLanguage, request.query());
+        return List.of(ragChatModel.chat(prompt).trim());
     }
 }

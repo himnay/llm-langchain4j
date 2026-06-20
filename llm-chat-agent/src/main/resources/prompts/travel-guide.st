@@ -1,2 +1,2 @@
-Create a {days} day travel plan for {city}.
+Create a {{days}} day travel plan for {{city}}.
 Include sightseeing highlights and local cuisine also Include an estimated daily budget.

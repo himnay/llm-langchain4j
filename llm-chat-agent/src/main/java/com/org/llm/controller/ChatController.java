@@ -5,6 +5,11 @@ import com.org.llm.model.ChatRequest;
 import com.org.llm.model.TravelPlan;
 import com.org.llm.service.ChatService;
 import com.org.llm.service.TravelGuideService;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,8 +17,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.messages.Message;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -36,7 +39,7 @@ class ChatController {
 
     private final ChatService chatService;
     private final TravelGuideService travelGuideService;
-    private final ChatMemory chatMemory;
+    private final ChatMemoryStore chatMemoryStore;
 
     @Operation(summary = "Send a chat message and receive a blocking response with RAG citations")
     @PostMapping
@@ -58,9 +61,9 @@ class ChatController {
             @NotBlank(message = "conversationId is required") @RequestParam String conversationId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
-        List<Message> allMessages = chatMemory.get(conversationId);
+        List<ChatMessage> allMessages = chatMemoryStore.getMessages(conversationId);
         PageRequest pageRequest = PageRequest.of(page, size);
-        Page<Message> pagedMessages = toPage(allMessages, pageRequest);
+        Page<Map<String, Object>> pagedMessages = toPage(allMessages.stream().map(ChatController::toView).toList(), pageRequest);
         return Map.of(
                 "content", pagedMessages.getContent(),
                 "page", pagedMessages.getNumber(),
@@ -84,6 +87,18 @@ class ChatController {
                 .event("token")
                 .data("I'm temporarily unavailable. Please try again in a moment.")
                 .build());
+    }
+
+    /** LangChain4j's message classes use record-style accessors (e.g. {@code text()}), not Jackson's
+     *  {@code getX()} convention, so they're mapped to a plain view here rather than serialized as-is. */
+    private static Map<String, Object> toView(ChatMessage message) {
+        String text = switch (message) {
+            case UserMessage m -> m.singleText();
+            case AiMessage m -> m.text();
+            case SystemMessage m -> m.text();
+            default -> message.toString();
+        };
+        return Map.of("role", message.type().name(), "text", text == null ? "" : text);
     }
 
     private static <T> Page<T> toPage(List<T> list, PageRequest pageRequest) {

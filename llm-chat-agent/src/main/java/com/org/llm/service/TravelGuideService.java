@@ -2,11 +2,14 @@ package com.org.llm.service;
 
 import com.org.llm.backend.TravelPlanBackend;
 import com.org.llm.model.TravelPlan;
-import org.springframework.ai.chat.prompt.PromptTemplate;
+import dev.langchain4j.model.input.PromptTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
@@ -17,16 +20,23 @@ import java.util.Map;
 public class TravelGuideService {
 
     private final TravelPlanBackend travelPlanBackend;
-    private final Resource travelGuideTemplate;
+    private final PromptTemplate travelGuideTemplate;
 
     public TravelGuideService(TravelPlanBackend travelPlanBackend,
-                              @Value("classpath:prompts/travel-guide.st") Resource travelGuideTemplate) {
+                              @Value("classpath:prompts/travel-guide.st") Resource travelGuideResource) {
         this.travelPlanBackend = travelPlanBackend;
-        this.travelGuideTemplate = travelGuideTemplate;
+        this.travelGuideTemplate = PromptTemplate.from(readResource(travelGuideResource));
     }
 
     public TravelPlan prepareTravelPlan(String city, Integer days) {
-        PromptTemplate template = new PromptTemplate(travelGuideTemplate);
-        return travelPlanBackend.plan(template, Map.of("city", city, "days", days));
+        return travelPlanBackend.plan(travelGuideTemplate, Map.of("city", city, "days", days));
+    }
+
+    private static String readResource(Resource resource) {
+        try {
+            return resource.getContentAsString(StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to read travel-guide prompt template", e);
+        }
     }
 }

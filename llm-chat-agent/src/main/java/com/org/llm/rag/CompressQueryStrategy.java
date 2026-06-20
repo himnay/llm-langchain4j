@@ -1,12 +1,13 @@
 package com.org.llm.rag;
 
 import com.org.llm.model.QueryTransformRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.rag.query.transformer.CompressingQueryTransformer;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.rag.Query;
-import org.springframework.ai.rag.preretrieval.query.transformation.CompressionQueryTransformer;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -17,7 +18,7 @@ import java.util.List;
 @RequiredArgsConstructor
 class CompressQueryStrategy implements QueryTransformationStrategy {
 
-    private final CompressionQueryTransformer compressionQueryTransformer;
+    private final CompressingQueryTransformer compressingQueryTransformer;
 
     @Override
     public QueryTransformationTechnique technique() {
@@ -26,22 +27,23 @@ class CompressQueryStrategy implements QueryTransformationStrategy {
 
     @Override
     public List<String> transform(QueryTransformRequest request) {
-        Query query = Query.builder()
-                .text(request.query())
-                .history(toHistory(request.history()))
+        UserMessage currentMessage = UserMessage.from(request.query());
+        Metadata metadata = Metadata.builder()
+                .chatMessage(currentMessage)
+                .chatMemory(toHistory(request.history()))
                 .build();
-        Query compressed = compressionQueryTransformer.transform(query);
-        return List.of(compressed.text());
+        Query query = new Query(request.query(), metadata);
+        return compressingQueryTransformer.transform(query).stream().map(Query::text).toList();
     }
 
     // Alternating turns, oldest first, starting with the user — see QueryTransformRequest#history
-    private static List<Message> toHistory(List<String> turns) {
-        List<Message> history = new ArrayList<>();
+    private static List<ChatMessage> toHistory(List<String> turns) {
+        List<ChatMessage> history = new ArrayList<>();
         if (turns == null) {
             return history;
         }
         for (int i = 0; i < turns.size(); i++) {
-            history.add(i % 2 == 0 ? new UserMessage(turns.get(i)) : new AssistantMessage(turns.get(i)));
+            history.add(i % 2 == 0 ? UserMessage.from(turns.get(i)) : AiMessage.from(turns.get(i)));
         }
         return history;
     }

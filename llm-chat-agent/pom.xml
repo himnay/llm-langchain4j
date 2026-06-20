@@ -6,13 +6,13 @@
 
     <parent>
         <groupId>com.org.llm</groupId>
-        <artifactId>llm-chat</artifactId>
+        <artifactId>llm-langchain4j</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>llm-chat-agent</artifactId>
     <name>llm-chat-agent</name>
-    <description>Production-grade Spring AI chat backend — chat, RAG and text-to-SQL.</description>
+    <description>LangChain4j chat backend — chat, RAG and text-to-SQL.</description>
 
     <dependencies>
         <dependency>
@@ -27,38 +27,35 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
+        <dependency>
+            <!-- WebClient/Flux (GatewayClient) and the reactive SSE codec (ChatController) — used
+                 to come in transitively via Spring AI's RAG/vector-store starters. -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <!-- Page/PageRequest for the chat-memory pagination endpoint. -->
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-commons</artifactId>
+        </dependency>
 
         <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-openai</artifactId>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-chat-memory-repository-jdbc</artifactId>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-pdf-document-reader</artifactId>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-markdown-document-reader</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-tika-document-reader</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-vector-store</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-rag</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-vector-store-redis</artifactId>
+            <!-- Community modules live on their own (beta) version track, outside langchain4j-bom. -->
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-community-redis</artifactId>
+            <version>1.16.0-beta26</version>
         </dependency>
         <dependency>
             <groupId>redis.clients</groupId>

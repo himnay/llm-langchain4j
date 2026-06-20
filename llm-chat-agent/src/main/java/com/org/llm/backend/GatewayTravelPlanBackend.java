@@ -2,9 +2,9 @@ package com.org.llm.backend;
 
 import com.org.llm.client.GatewayClient;
 import com.org.llm.model.TravelPlan;
+import dev.langchain4j.model.input.PromptTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
@@ -32,7 +32,7 @@ public class GatewayTravelPlanBackend implements TravelPlanBackend {
     @Override
     public TravelPlan plan(PromptTemplate template, Map<String, Object> variables) {
         log.info("TRAVEL | routing via gateway | vars={}", variables);
-        String rendered = template.render(variables);
+        String rendered = template.apply(variables).text();
         String json = gatewayClient.query(JSON_INSTRUCTION, rendered);
         return parse(json);
     }

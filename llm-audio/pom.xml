@@ -6,13 +6,13 @@
 
     <parent>
         <groupId>com.org.llm</groupId>
-        <artifactId>llm-chat</artifactId>
+        <artifactId>llm-langchain4j</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>llm-audio</artifactId>
     <name>llm-audio</name>
-    <description>Production-grade Spring AI audio backend — transcription, text-to-speech and voice chat.</description>
+    <description>LangChain4j audio backend — transcription, text-to-speech and voice chat.</description>
 
     <dependencies>
         <dependency>
@@ -27,10 +27,27 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
+        <dependency>
+            <!-- WebClient (ChatAgentClient/ChatAgentConfig) — used to come in transitively via
+                 Spring AI's starter. -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
 
         <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-openai</artifactId>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+        </dependency>
+        <dependency>
+            <!-- LangChain4j has no text-to-speech abstraction at all (verified: zero TTS classes
+                 in any artifact) — used directly here only for speech synthesis. -->
+            <groupId>com.openai</groupId>
+            <artifactId>openai-java</artifactId>
+            <version>4.41.0</version>
         </dependency>
 
         <dependency>

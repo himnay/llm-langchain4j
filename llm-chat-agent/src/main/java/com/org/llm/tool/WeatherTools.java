@@ -2,8 +2,9 @@ package com.org.llm.tool;
 
 import com.org.llm.model.ForecastResponse;
 import com.org.llm.model.WeatherResult;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -18,8 +19,9 @@ public class WeatherTools {
     @Value("${app.weather.api-key}")
     private String apiKey;
 
-    @Tool(description = "Get weather forecast for a given city and date (yyyy-MM-dd). If date is not provided, defaults to today.")
-    public WeatherResult getWeather(String city, String date) {
+    @Tool("Get weather forecast for a given city and date (yyyy-MM-dd). If date is not provided, defaults to today.")
+    public WeatherResult getWeather(@P("city to forecast") String city,
+                                     @P(value = "forecast date, yyyy-MM-dd", required = false) String date) {
         log.info("Getting weather for city: " + city);
         try {
             // Build API URL

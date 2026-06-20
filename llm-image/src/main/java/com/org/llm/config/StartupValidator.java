@@ -15,24 +15,18 @@ import org.springframework.stereotype.Component;
 public class StartupValidator implements ApplicationRunner {
 
     private final String openAiApiKey;
-    private final String stabilityApiKey;
     private final boolean authEnabled;
 
-    public StartupValidator(@Value("${spring.ai.openai.api-key:}") String openAiApiKey,
-                            @Value("${spring.ai.stabilityai.api-key:}") String stabilityApiKey,
+    public StartupValidator(@Value("${OPENAI_API_KEY:}") String openAiApiKey,
                             @Value("${app.security.auth-enabled:true}") boolean authEnabled) {
         this.openAiApiKey = openAiApiKey;
-        this.stabilityApiKey = stabilityApiKey;
         this.authEnabled = authEnabled;
     }
 
     @Override
     public void run(ApplicationArguments args) {
         if (isMissing(openAiApiKey)) {
-            log.warn("CONFIG | OPENAI_API_KEY is unset or a placeholder — image captioning calls will fail at runtime.");
-        }
-        if (isMissing(stabilityApiKey)) {
-            log.warn("CONFIG | STABILITYAI_API_KEY is unset or a placeholder — image generation will fail at runtime.");
+            log.warn("CONFIG | OPENAI_API_KEY is unset or a placeholder — captioning/generation calls will fail at runtime.");
         }
         if (!authEnabled) {
             log.warn("CONFIG | API-key authentication is DISABLED — every endpoint is open. Do not run this way in production.");

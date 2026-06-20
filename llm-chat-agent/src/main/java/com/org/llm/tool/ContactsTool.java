@@ -1,16 +1,23 @@
 package com.org.llm.tool;
 
 import com.org.llm.model.Contact;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Not {@code @Transactional}: that annotation makes Spring wrap this bean in a CGLIB subclass
+ * proxy, and LangChain4j's {@code AiServices} tool scanner reflects on the proxy's own declared
+ * methods — which don't carry the proxied class's {@code @Tool} annotations — so a proxied tool
+ * bean fails to register at all ("does not have any methods annotated with @Tool"). A single
+ * read-only {@code JdbcTemplate} query doesn't need an explicit transaction boundary anyway.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -18,9 +25,8 @@ public class ContactsTool {
 
     private final JdbcTemplate jdbcTemplate;
 
-    @Transactional(readOnly = true)
-    @Tool(description = "Find contacts in a given city")
-    public List<Contact> findContactsByCity(String city) {
+    @Tool("Find contacts in a given city")
+    public List<Contact> findContactsByCity(@P("city to search") String city) {
         log.info("Finding contacts in city: " + city);
         String sql = "SELECT name, email, city FROM contacts WHERE city = ?";
 
@@ -34,8 +40,8 @@ public class ContactsTool {
         return jdbcTemplate.query(sql, rowMapper, city);
     }
 
-    @Tool(description = "Formats a list of contacts into CSV with headers: Name, Email, City")
-    public String formatAsCsv(List<Contact> contacts) {
+    @Tool("Formats a list of contacts into CSV with headers: Name, Email, City")
+    public String formatAsCsv(@P("contacts to format") List<Contact> contacts) {
         StringBuilder sb = new StringBuilder("Name,Email,City\n");
         for (Contact c : contacts) {
             sb.append(c.name())

@@ -17,7 +17,7 @@ public class StartupValidator implements ApplicationRunner {
     private final String openAiApiKey;
     private final boolean authEnabled;
 
-    public StartupValidator(@Value("${spring.ai.openai.api-key:}") String openAiApiKey,
+    public StartupValidator(@Value("${OPENAI_API_KEY:}") String openAiApiKey,
                             @Value("${app.security.auth-enabled:true}") boolean authEnabled) {
         this.openAiApiKey = openAiApiKey;
         this.authEnabled = authEnabled;

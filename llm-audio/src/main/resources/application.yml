@@ -15,9 +15,6 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
       file-size-threshold: 2KB
-  ai:
-    openai:
-      api-key: ${OPENAI_API_KEY:sk-placeholder}
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:spring_ai_audio}
     username: ${POSTGRES_USER:postgres}
@@ -86,7 +83,7 @@ logging:
   level:
     root: INFO
     com.org.llm: INFO
-    org.springframework.ai: INFO
+    dev.langchain4j: INFO
     org.springframework.web: INFO
 
 resilience4j:
@@ -111,11 +108,11 @@ resilience4j:
 app:
   metadata:
     project-name: LLM Audio
-    description: Production-grade Spring AI audio backend — transcription, text-to-speech and voice chat.
+    description: LangChain4j audio backend — transcription, text-to-speech and voice chat.
     group-id: com.org.llm
     artifact-id: llm-audio
     project-version: 0.0.1-SNAPSHOT
-    spring-ai-version: 2.0.0
+    langchain4j-version: 1.16.3
     database: PostgreSQL
   # ── llm-chat-agent (AI reply for voice chat) ───────────────────────────────────
   chat-agent:

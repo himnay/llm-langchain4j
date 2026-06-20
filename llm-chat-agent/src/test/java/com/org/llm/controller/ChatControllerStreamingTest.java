@@ -3,9 +3,9 @@ package com.org.llm.controller;
 import com.org.llm.model.ChatRequest;
 import com.org.llm.service.ChatService;
 import com.org.llm.service.TravelGuideService;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.http.codec.ServerSentEvent;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
@@ -22,10 +22,10 @@ class ChatControllerStreamingTest {
 
     private final ChatService chatService = mock(ChatService.class);
     private final TravelGuideService travelGuideService = mock(TravelGuideService.class);
-    private final ChatMemory chatMemory = mock(ChatMemory.class);
+    private final ChatMemoryStore chatMemoryStore = mock(ChatMemoryStore.class);
 
     private final ChatController controller =
-            new ChatController(chatService, travelGuideService, chatMemory);
+            new ChatController(chatService, travelGuideService, chatMemoryStore);
 
     @DisplayName("Streaming fallback emits an SSE event with a temporarily-unavailable message")
     @Test

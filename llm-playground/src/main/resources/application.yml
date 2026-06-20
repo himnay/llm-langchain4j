@@ -1,0 +1,18 @@
+server:
+  port: ${SERVER_PORT:8085}   # 8080=llm-gateway, 8082=llm-chat-agent, 8083=llm-audio, 8084=llm-image, 8085=llm-playground
+  servlet:
+    context-path: /ai
+
+spring:
+  application:
+    name: llm-playground
+
+app:
+  chat:
+    model: ${CHAT_MODEL:gpt-4o-mini}
+
+logging:
+  level:
+    root: INFO
+    com.org.llm: INFO
+    dev.langchain4j: INFO

@@ -1,18 +1,23 @@
-# LLM Chat — Spring AI Production-Grade Backend
+# LLM LangChain4j — A LangChain4j Learning Backend
 
-A Maven **multi-module** reactor demonstrating production Spring AI patterns, split into three
-independently runnable modules:
+A Maven **multi-module** reactor ported from a sibling project (`llm-chat`) that used Spring AI
+end-to-end. Every Spring AI integration has been replaced with **LangChain4j 1.16.3** — the goal
+of this repo is to learn LangChain4j's real capabilities by rebuilding a working backend on top of
+it, not to ship a product. Four independently runnable modules:
 
 | Module | Port | Responsibility |
 |---|---|---|
 | [`llm-chat-agent`](./llm-chat-agent) | 8082 | Multi-turn chat with persistent memory, streaming, RAG, PDF/file reading, a guarded natural-language **text-to-SQL** endpoint, travel-guide and recipe demos |
-| [`llm-audio`](./llm-audio) | 8083 | Audio transcription (Whisper), text-to-speech, and voice chat (calls `llm-chat-agent` over HTTP for the AI reply) |
-| [`llm-image`](./llm-image) | 8084 | Image captioning (multimodal chat) and AI image generation (Stability AI / gateway DALL·E) |
+| [`llm-audio`](./llm-audio) | 8083 | Audio transcription (Whisper) and text-to-speech, and voice chat (calls `llm-chat-agent` over HTTP for the AI reply) |
+| [`llm-image`](./llm-image) | 8084 | Image captioning (multimodal chat) and AI image generation (OpenAI Dall-E) |
+| [`llm-playground`](./llm-playground) | 8085 | LangChain4j capabilities the other modules don't exercise: enum classification, structured extraction, summarization, standalone moderation |
 
-All three share this repo's root `pom.xml` (a reactor parent extending `super-pom`), Maven
-wrapper, and `docker-compose.yml` (Postgres, Redis, observability stack). Each module is its own
-Spring Boot app with its own `application.yml`, API-key auth, and database (`spring_ai`,
-`spring_ai_audio`, `spring_ai_image` — see `observability/init-db/`).
+All four share this repo's root `pom.xml` (a reactor parent extending `super-pom`, importing
+`dev.langchain4j:langchain4j-bom:1.16.3`), the Maven wrapper, and `docker-compose.yml` (Postgres,
+Redis, observability stack). Each module is its own Spring Boot app with its own
+`application.yml`, API-key auth (`llm-playground` excepted — it has no persistence), and database
+(`spring_ai`, `spring_ai_audio`, `spring_ai_image` — see `observability/init-db/`; names kept from
+the original Spring AI project for infra continuity, not a library reference).
 
 > Sibling services: [`llm-gateway`](../llm-gateway) (multi-provider routing + guardrails) and
 > [`llm-rag-pipeline`](../llm-rag-pipeline) (ingestion + retrieval). This repo follows the same
@@ -20,10 +25,11 @@ Spring Boot app with its own `application.yml`, API-key auth, and database (`spr
 
 ## 🛠️ Technology Stack
 
-- **Spring Boot** 4.1.0 · **Spring AI** 2.0.0 · **Java** 25 · **Maven**
-- **OpenAI** (chat, audio) · **Stability AI** (image generation)
-- **PostgreSQL** — chat memory, contacts, text-to-SQL data, API keys
-- **Redis** — vector store (for RAG-backed advisors)
+- **Spring Boot** 4.1.0 · **LangChain4j** 1.16.3 · **Java** 25 · **Maven**
+- **OpenAI** (chat, embeddings, moderation, audio transcription, image generation) · the official
+  **OpenAI Java SDK** directly for text-to-speech (LangChain4j has no TTS abstraction)
+- **PostgreSQL** — chat memory, contacts, text-to-SQL data, API keys, document-ingestion tracking
+- **Redis** — embedding store (`langchain4j-community-redis`), queried by the RAG content retriever
 - **Spring Security** — API-key authentication (`X-API-Key`) + in-memory rate limiting
 - **Observability**: Micrometer + Prometheus + Grafana + Tempo (traces) + Loki (logs)
 
@@ -34,16 +40,23 @@ across modules but they never share a classpath at runtime.
 
 - **`llm-chat-agent/`** — `controller/` (chat, file, recipe, text-to-sql, RAG query-transform
   playground), `service/` (`ChatService`, `TravelGuideService`, `TextToSqlService`,
-  `FileReadService`, …), `backend/` — **Strategy** pattern for where chat/travel-guide work
-  executes (`ChatBackend`, `TravelPlanBackend`, each with a `Gateway*` and a `Local*`
-  implementation, selected at startup by `app.gateway.enabled`), `rag/` (query transformer
-  strategies + `RagFilterContext`), `tool/` (weather, contacts), `config/` (`AIConfig`,
-  `RagConfig`, `RedisConfig`, `StartupValidator`).
+  `FileReadService`, `AnswerEvaluator`, …), `backend/` — **Strategy** pattern for where
+  chat/travel-guide work executes (`ChatBackend`, `TravelPlanBackend`, each with a `Gateway*` and a
+  `Local*` implementation, selected at startup by `app.gateway.enabled`), `assistant/` (LangChain4j
+  `AiServices` interfaces: `ChatAssistant`, `TravelPlanAssistant`, `FaithfulnessJudge`),
+  `guardrail/BlockedPhraseGuardrail`, `observability/LoggingChatModelListener`,
+  `memory/JdbcChatMemoryStore`, `rag/` (query-transformer strategies, `RagFilterContext`,
+  `RetrievedContentContext`, `CapturingContentRetriever`, `CompressThenExpandQueryTransformer`,
+  `DocumentIngestionRunner`), `tool/` (weather, contacts), `config/` (`AIConfig`, `RagConfig`,
+  `StartupValidator`).
 - **`llm-audio/`** — `controller/` (`AudioController`, `VoiceChatController`), `service/`
   (`AudioService`, `VoiceChatService` — validate → store → transcribe → chat → synthesize),
   `client/ChatAgentClient` (calls `llm-chat-agent`'s `/chat` endpoint over HTTP for the AI reply).
 - **`llm-image/`** — `controller/ImageRestController`, `service/ImageCaptionService`,
-  `backend/ImageBackend` (`Gateway*`/`Local*` Stability AI strategy).
+  `backend/ImageBackend` (`Gateway*`/`Local*` Dall-E strategy).
+- **`llm-playground/`** — `assistant/` (`ClassifierAssistant`, `ExtractionAssistant`,
+  `SummarizerAssistant`), `service/ModerationService`, `controller/PlaygroundController`,
+  `config/AIConfig`. No database, no auth — a thin REST surface over a handful of `AiServices`.
 - **Shared per module** (each module has its own copy — they're separate deployables, not a
   shared library): `security/` (`ApiKeyService`, `ApiKeyAuthFilter`, `RateLimitFilter`,
   `SecurityConfig`, `RestAuthenticationEntryPoint`), `exception/` (`GlobalExceptionHandler` +
@@ -61,9 +74,11 @@ docker compose up -d        # Postgres, Redis, RedisInsight + Prometheus/Grafana
 
 ```bash
 export OPENAI_API_KEY=sk-...
-export STABILITYAI_API_KEY=sk-...     # only for llm-image generation
 export WEATHER_API_KEY=...            # only for llm-chat-agent's weather tool
 ```
+
+(No Stability AI key — LangChain4j has no Stability AI integration, so `llm-image` now generates
+with OpenAI Dall-E using the same `OPENAI_API_KEY`.)
 
 ### 3. Run each module you need
 
@@ -71,6 +86,7 @@ export WEATHER_API_KEY=...            # only for llm-chat-agent's weather tool
 ./mvnw -pl llm-chat-agent spring-boot:run    # port 8082
 ./mvnw -pl llm-audio spring-boot:run         # port 8083 — calls llm-chat-agent for voice-chat replies
 ./mvnw -pl llm-image spring-boot:run         # port 8084
+./mvnw -pl llm-playground spring-boot:run    # port 8085 — no DB/auth, just AiServices demos
 ```
 
 Or build/test the whole reactor from the root: `./mvnw verify`. Each module serves under context
@@ -78,7 +94,8 @@ path **`/ai`** on its own port (e.g. http://localhost:8082/ai).
 
 ## 🔑 Authentication
 
-- API-key auth is **enabled by default** in every module — each request must include `X-API-Key`
+- API-key auth is **enabled by default** in `llm-chat-agent`, `llm-audio`, and `llm-image` — each
+  request must include `X-API-Key` (`llm-playground` has no auth/persistence layer at all)
 - Excluded from auth: actuator endpoints, the demo static HTML pages, and `/error`
 - Keys are stored as SHA-256 hashes in each module's own `api_keys` PostgreSQL table (separate
   databases — `spring_ai`, `spring_ai_audio`, `spring_ai_image` — so a key minted for one module
@@ -113,9 +130,9 @@ echo "X-API-Key: $raw"
 
 - By default (`app.gateway.enabled=true`), `llm-chat-agent`'s chat/structured travel-guide and
   `llm-image`'s image generation are **routed through `llm-gateway`** rather than calling
-  OpenAI/Stability directly
-- The gateway owns provider API keys, guardrails, failover logic, and per-session memory — centralising those concerns outside these services
-- When `GATEWAY_ENABLED=false`, the module calls its provider directly (the original behaviour)
+  OpenAI directly
+- The gateway owns provider API keys, guardrails, failover logic, and per-session memory — centralising those concerns outside these services; it has no LangChain4j involvement at all (plain `WebClient` calls), so it's untouched by this migration
+- When `GATEWAY_ENABLED=false`, the module calls its provider directly via LangChain4j (the path this README documents)
 - `llm-image`'s captioning, `llm-audio`'s transcription/TTS, and `llm-chat-agent`'s file reading **always run locally** — the gateway exposes no such endpoints
 
 | Flow                                  | Gateway call                          |
@@ -158,13 +175,23 @@ echo "X-API-Key: $raw"
 | Method | Path                  | Description                                    |
 |--------|-----------------------|------------------------------------------------|
 | POST   | `/api/v1/images/caption`      | Caption an image                               |
-| GET    | `/api/v1/images/generate`     | Generate an image (gateway DALL·E, or Stability if gateway off) |
+| GET    | `/api/v1/images/generate`     | Generate an image (gateway or local Dall-E)    |
+
+### `llm-playground` (port 8085, under `/ai`)
+
+| Method | Path                  | Description                                    |
+|--------|-----------------------|------------------------------------------------|
+| POST   | `/api/v1/playground/classify`  | Sentiment classification → `enum` output       |
+| POST   | `/api/v1/playground/extract`   | Structured extraction → nested record output   |
+| POST   | `/api/v1/playground/summarize` | Plain-text summarization, parameterized length |
+| POST   | `/api/v1/playground/moderate`  | Standalone moderation check (no chat involved) |
 
 ## 📊 Observability
 
 See [`PROMETHEUS_GRAFANA_SETUP.md`](./PROMETHEUS_GRAFANA_SETUP.md). Health at
 `/ai/actuator/health`, Prometheus scrape at `/ai/actuator/prometheus`, Grafana at
 http://localhost:3000 (admin/admin) with the auto-provisioned **LLM Chat** dashboard.
+(`llm-playground` has no actuator/observability wiring — it's a bare demo module.)
 
 ### Actuator endpoints
 
@@ -181,7 +208,7 @@ http://localhost:3000 (admin/admin) with the auto-provisioned **LLM Chat** dashb
 ## 🧱 Configuration
 
 - All tunables live in `application.yml` and accept environment variable overrides at runtime
-- Key environment variables: `SERVER_PORT`, `POSTGRES_*`, `REDIS_*`, `API_AUTH_ENABLED`, `RATE_LIMIT_ENABLED`, `CORS_ALLOWED_ORIGINS`, `OTEL_EXPORTER_OTLP_ENDPOINT`
+- Key environment variables: `SERVER_PORT`, `POSTGRES_*`, `REDIS_*`, `API_AUTH_ENABLED`, `RATE_LIMIT_ENABLED`, `CORS_ALLOWED_ORIGINS`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `CHAT_MODEL`, `EMBEDDING_MODEL`, `IMAGE_MODEL`
 - No rebuild required — all knobs are externalised and take effect on the next startup
 
 ## ✅ Build & Test
@@ -192,8 +219,9 @@ http://localhost:3000 (admin/admin) with the auto-provisioned **LLM Chat** dashb
 
 - Integration tests use **Testcontainers** (`TestcontainersConfiguration` + `@ServiceConnection`)
 - A throwaway `postgres:18` container is started per test run — no locally provisioned database needed, only Docker
-- Flyway migrations, the JDBC chat-memory schema, and all JDBC queries in tests run against the real Postgres 18 container
-- Validator logic (`SqlValidator`, `AudioValidator`) is covered by plain unit tests with no container dependency
+- The `EmbeddingStore` bean is `@MockitoBean`-replaced in `LLMApplicationTests` rather than run against a real Redis container, since `RedisEmbeddingStore` calls `FT.CREATE` on construction, which needs the RediSearch module (a `redis/redis-stack-server` image, not plain `redis:7-alpine`) — out of scope for a quick context-load test
+- Flyway migrations and all JDBC queries in tests run against the real Postgres 18 container
+- Validator logic (`SqlValidator`, `AudioValidator`) and the new `BlockedPhraseGuardrail` are covered by plain unit tests with no container dependency
 
 ## Technology Deep Dive
 
@@ -215,93 +243,105 @@ This section explains every significant library, framework, database, and infras
 - `spring-boot-starter-validation` enables `@Valid` on controller method parameters for automatic request-body validation
 - `server.shutdown: graceful` with a 30-second drain window ensures rolling deployments do not drop in-flight requests
 - The Spring Boot Maven plugin is configured with the `build-info` goal so `/ai/actuator/info` reports build timestamp, version, and Git commit
+- LangChain4j has **no Spring Boot starter used here** — every `ChatModel`/`EmbeddingModel`/`ImageModel`/`AiServices` bean is a plain `@Bean` method in a `@Configuration` class (`AIConfig`, `RagConfig`); Spring's only role is dependency wiring and lifecycle, same as it would be for any other library
 
 ---
 
-### Spring AI 2.0.0
+### LangChain4j 1.16.3
 
 **What it is.**
 
-- Spring AI is the official Spring integration layer for large-language models and AI services
-- Provides a provider-neutral `ChatClient` abstraction, chat-memory advisors, document readers, vector store abstractions, audio model wrappers, image model wrappers, and a `@Tool` annotation for function calling
-- All components follow standard Spring conventions — dependency injection, auto-configuration, `application.yml` properties
+- LangChain4j is a Java library for building LLM-powered applications: model abstractions
+  (`ChatModel`, `StreamingChatModel`, `EmbeddingModel`, `ImageModel`, `AudioTranscriptionModel`,
+  `ModerationModel`), a declarative `AiServices` proxy-based API (interfaces become working LLM
+  clients), a modular RAG pipeline (`RetrievalAugmentor`, query transformers, content
+  retrievers/aggregators/injectors), `@Tool`/`@P` function calling, structured output via
+  reflection-derived JSON schemas, and a guardrail system (`InputGuardrail`/`OutputGuardrail`)
+- Pinned here via `dev.langchain4j:langchain4j-bom:1.16.3` imported in the root `pom.xml`'s
+  `dependencyManagement` — every module's `langchain4j`/`langchain4j-open-ai` version comes from
+  that BOM; only the **community** modules (`langchain4j-community-redis`) sit on their own
+  separate beta version track and need an explicit version
 
 **How it's used here.**
 
-- **`ChatClient`** (configured in `AIConfig`) is built from `OpenAiChatModel` and pre-loaded with three default advisors:
-  - `SafeGuardAdvisor` — blocks known jailbreak phrases before any processing
-  - `MessageChatMemoryAdvisor` — enriches every prompt with per-conversation history retrieved from PostgreSQL
-  - `SimpleLoggerAdvisor` — logs request/response pairs for observability
-- **`JdbcChatMemoryRepository` + `MessageWindowChatMemory`** persist conversation history to PostgreSQL and cap the window at 50 messages so memory survives restarts
-- **`OpenAiAudioTranscriptionModel` / `OpenAiAudioSpeechModel`** are injected directly into `AudioService` to call Whisper (speech-to-text) and TTS-1 (text-to-speech) via Spring AI's audio abstraction
-- **`spring-ai-pdf-document-reader`, `spring-ai-markdown-document-reader`, `spring-ai-tika-document-reader`** are available for the file-reading and RAG-backed advisor flows
-- **`spring-ai-starter-vector-store-redis`** wires a Redis vector store that the RAG advisor can query for context from uploaded PDFs
-- **`spring-ai-rag`** provides the modular RAG building blocks — `RetrievalAugmentationAdvisor`, `VectorStoreDocumentRetriever`, `ConcatenationDocumentJoiner`, `ContextualQueryAugmenter`, and the pre-retrieval query transformers/expander (`CompressionQueryTransformer`, `RewriteQueryTransformer`, `TranslationQueryTransformer`, `MultiQueryExpander`) — used to make retrieval history-aware and exposed individually via the query-transformation playground (see below)
-- **`FilterExpressionBuilder`** (from `spring-ai-vector-store`) scopes a single chat turn's retrieval to one document by `fileName` metadata, via `RagFilterContext` (see "Per-request document filtering" below)
-- **`PromptTemplate`** loads the `travel-guide.st` StringTemplate file and fills `{city}` / `{days}` placeholders before passing the prompt to the travel-plan backend
-- **`@Tool`** on `WeatherTools.getWeather` and `ContactsTool.findContactsByCity` registers those methods as callable functions the LLM can invoke during a chat turn
+- **`AiServices`** (built in `AIConfig`) replaces Spring AI's `ChatClient` + advisor chain: a
+  single `ChatAssistant` interface is built once with `.chatModel()`, `.streamingChatModel()`,
+  `.chatMemoryProvider()`, `.moderationModel()`, `.retrievalAugmentor()`, `.inputGuardrails()`, and
+  `.tools()` — all fixed at construction time, unlike Spring AI's per-call `.advisors()`/`.tools()`
+  attachment on `ChatClient.prompt()`
+- **`BlockedPhraseGuardrail` (`InputGuardrail`)** blocks known jailbreak phrases before any model
+  call — LangChain4j has no advisor-ordering concept (a guardrail always runs first), so it
+  occupies the same "first line of defense" position `SafeGuardAdvisor.order(Integer.MIN_VALUE)`
+  did in the Spring AI version
+- **`JdbcChatMemoryStore` (`ChatMemoryStore`) + `MessageWindowChatMemory`** persist conversation
+  history to PostgreSQL as JSON (via `ChatMessageSerializer`/`ChatMessageDeserializer`) and cap the
+  window at 50 messages — LangChain4j ships the pluggable `ChatMemoryStore` *interface* but no JDBC
+  implementation of its own, so this one is hand-written (see `db/migration/V6__create_chat_memory.sql`)
+- **`@Moderate`** on `ChatAssistant.chat()`, backed by an `OpenAiModerationModel` bean, moderates
+  every input automatically — added as an extra (Spring AI's version didn't have this) specifically
+  to exercise LangChain4j's moderation-in-AiServices capability
+- **`OpenAiAudioTranscriptionModel`** is injected into `llm-audio`'s `AudioService` for Whisper
+  transcription; LangChain4j has **no text-to-speech abstraction at all** (verified: zero
+  speech-synthesis classes in any artifact), so TTS calls the official OpenAI Java SDK directly —
+  see the gap callout below
+- **`ApachePdfBoxDocumentParser` + `DocumentSplitters.recursive()` + `EmbeddingStoreIngestor`**
+  (`DocumentIngestionRunner`) parse, chunk, and embed the two corporate PDFs into Redis on
+  startup — nothing in the original Spring AI version did this in this module (ingestion lived in
+  a separate upstream service); the orphaned `app.documents.*` config implied it belonged here
+- **`RedisEmbeddingStore`** (`langchain4j-community-redis`, built directly against a `JedisPooled`
+  client — no Spring Boot starter, see the Redis section) is queried by an
+  `EmbeddingStoreContentRetriever`, wrapped in a `CapturingContentRetriever` decorator that stashes
+  what it retrieved into `RetrievedContentContext` for the citations response
+- **`DefaultRetrievalAugmentor`** (`RagConfig`) wires the RAG pipeline:
+  `CompressThenExpandQueryTransformer` (a custom class composing `CompressingQueryTransformer` then
+  `ExpandingQueryTransformer` in plain Java — `DefaultRetrievalAugmentor` only has a single
+  `queryTransformer` slot, unlike Spring AI's transformer-list-plus-separate-expander shape) →
+  the content retriever above → `DefaultContentAggregator` → `DefaultContentInjector`
+- **`MetadataFilterBuilder`** scopes a single chat turn's retrieval to one document by `fileName`
+  metadata, via `RagFilterContext` (see "Per-request document filtering" below)
+- **`PromptTemplate`** (LangChain4j's, Mustache-style `{{var}}` syntax) loads the
+  `travel-guide.st` file and fills `{{city}}` / `{{days}}` placeholders before passing the prompt
+  to the travel-plan backend
+- **`@Tool`/`@P`** on `WeatherTools.getWeather` and `ContactsTool.findContactsByCity`/`formatAsCsv`
+  registers those methods as callable functions the LLM can invoke during a chat turn — same
+  function-calling capability Spring AI's `@Tool` provided, registered via `.tools(weatherTools,
+  contactsTool)` on the `AiServices` builder instead of per-call on `ChatClient.prompt()`
+- **`FaithfulnessJudge` (a custom `AiServices` interface)** replaces Spring AI's
+  `FactCheckingEvaluator` — LangChain4j ships **no built-in RAG-answer evaluator at all**, so this
+  is a hand-written "LLM-as-judge" interface returning a structured `FaithfulnessVerdict(boolean
+  pass, String reasoning)`, gated behind `app.rag.evaluate-faithfulness`
+- **Structured output** (`TravelPlanAssistant.plan()`, `FaithfulnessJudge.check()`, and every
+  `llm-playground` assistant) returns a record/enum directly — LangChain4j reflects the return type
+  into a JSON schema and parses the model's reply into it automatically, the same role Spring AI's
+  `.call().entity(TravelPlan.class)` played
 
-**Advisor chain ordering**
+**Why an `AiServices` instance is built once, not per call**
 
-The three default advisors fire in a fixed order on every `ChatClient` call:
+Spring AI's `ChatClient` is a flexible builder you reconfigure on every `.prompt()` call —
+`LocalChatBackend` attached `.tools(weatherTools, contactsTool)` and the RAG advisor fresh on each
+`chat()`/`stream()` invocation. LangChain4j's `AiServices` proxy is built once and fixes its tools,
+memory provider, retrieval augmentor, and guardrails at construction time; per-call concerns (the
+optional `documentSource` filter, the dynamic system prompt with today's date) are passed as method
+parameters (`@V("systemPrompt")`) or threaded through a `ThreadLocal` the singleton beans read from
+(`RagFilterContext`, same trick the Spring AI version already used for its per-request filter).
 
-| Order | Advisor | Role |
-|---|---|---|
-| `Integer.MIN_VALUE` | `SafeGuardAdvisor` | Runs first — blocks jailbreak / prompt-injection phrases before any memory lookup or model call is made |
-| default | `MessageChatMemoryAdvisor` | Fetches the last 50 messages for the `conversationId` from PostgreSQL and prepends them to the prompt as `USER`/`ASSISTANT` turns |
-| default | `SimpleLoggerAdvisor` | Logs full request and response pairs at `DEBUG` level for observability; runs last so it captures the fully assembled prompt |
+**Capturing citations without a per-call response wrapper**
 
-`SafeGuardAdvisor.order(Integer.MIN_VALUE)` guarantees the guard fires before memory is even consulted — a blocked request never touches the database.
+Spring AI's `ChatClientResponse.context()` exposed whatever the `RetrievalAugmentationAdvisor`
+retrieved for that specific call. LangChain4j's plain `String chat(...)` method on an `AiServices`
+interface returns no such wrapper, so two different mechanisms cover the two call shapes:
 
-**History-aware RAG on the chat and streaming endpoints**
+- **Non-streaming** (`ChatAssistant.chat()`): `CapturingContentRetriever` (a `ContentRetriever`
+  decorator wrapping the real `EmbeddingStoreContentRetriever`) writes every retrieval's results
+  into `RetrievedContentContext`, a `ThreadLocal` `LocalChatBackend` reads right after the call —
+  safe because retrieval happens synchronously on the calling thread before the method returns.
+- **Streaming** (`ChatAssistant.chatStream()`): `TokenStream#onRetrieved(Consumer<List<Content>>)`
+  hands back exactly what was retrieved as a native callback — no `ThreadLocal` needed here at all.
 
-`LocalChatBackend.chat()` / `.stream()` attach a `RetrievalAugmentationAdvisor` on every call (configured in `RagConfig`):
+**Per-request document filtering (`MetadataFilterBuilder`)**
 
-```java
-chatClient.prompt()
-    .advisors(spec -> spec
-            .advisors(retrievalAugmentationAdvisor)
-            .param(ChatMemory.CONVERSATION_ID, conversationId))
-    .stream()
-    ...
-```
-
-Multi-turn messages ("what about the second one?") have no standalone meaning, so embedding them as-is against the vector store returns poor matches, and a single phrasing of a query can miss relevant chunks that use different wording. `RagConfig` wires the advisor as a **compress → expand → retrieve (per variant) → join → augment → generate** pipeline instead of a single opaque step:
-
-```java
-@Bean
-public RetrievalAugmentationAdvisor retrievalAugmentationAdvisor(VectorStore vectorStore,
-                                                                  CompressionQueryTransformer compressionQueryTransformer,
-                                                                  MultiQueryExpander multiQueryExpander,
-                                                                  RagFilterContext ragFilterContext) {
-    return RetrievalAugmentationAdvisor.builder()
-            .queryTransformers(compressionQueryTransformer)
-            .queryExpander(multiQueryExpander)
-            .documentRetriever(VectorStoreDocumentRetriever.builder()
-                    .vectorStore(vectorStore)
-                    .filterExpression(ragFilterContext::get)
-                    .build())
-            .documentJoiner(new ConcatenationDocumentJoiner())
-            .queryAugmenter(ContextualQueryAugmenter.builder().allowEmptyContext(true).build())
-            .build();
-}
-```
-
-Because `RetrievalAugmentationAdvisor` is added per-call *after* the chat client's default `MessageChatMemoryAdvisor`, the prompt it sees already has the last 50 messages for the conversation prepended.
-
-1. `CompressionQueryTransformer` folds that history plus the current message into one standalone query with an LLM call (e.g. *"what about the second one?"* → *"What are the details of the second leave type in NexaCorp's leave policy?"*)
-2. `MultiQueryExpander` takes that standalone query and generates 3 paraphrased variants plus the original (`numberOfQueries(3)`, `includeOriginal(true)`), to improve recall against phrasing-sensitive embeddings
-3. `VectorStoreDocumentRetriever` embeds **each** variant and searches the Redis index (pre-loaded from `AtlasCorp-TravelPolicy.pdf` and `AtlasCorp_Events_Holidays.pdf`) independently, optionally narrowed by the active `RagFilterContext` filter (see below)
-4. `ConcatenationDocumentJoiner` merges the per-variant result lists into one deduplicated document set
-5. `ContextualQueryAugmenter` injects the joined chunks as a `SYSTEM` context block before the first token is streamed
-
-Two things worth calling out:
-- Compression and expansion only change what's sent to the retriever — the user's original message text is still what gets stored in `ChatMemory`, so conversation history isn't silently rewritten.
-- `allowEmptyContext(true)` keeps the advisor permissive: if retrieval finds nothing relevant (e.g. small talk), the model still answers instead of refusing.
-
-**Per-request document filtering (`FilterExpressionBuilder`)**
-
-`ChatRequest.documentSource` lets a caller scope a single chat turn's retrieval to one pre-loaded document, instead of searching across all of them:
+`ChatRequest.documentSource` lets a caller scope a single chat turn's retrieval to one pre-loaded
+document, instead of searching across all of them:
 
 ```json
 POST /api/v1/chat
@@ -312,28 +352,42 @@ POST /api/v1/chat
 }
 ```
 
-The `VectorStoreDocumentRetriever` bean in `RagConfig` is a singleton, but the filter is per-request, so it can't be passed as a fixed builder argument. Instead, `filterExpression(Supplier<Filter.Expression>)` is wired to `ragFilterContext::get` — a `ThreadLocal` holder (`com.org.llm.rag.RagFilterContext`). `LocalChatBackend` builds a `Filter.Expression` with `new FilterExpressionBuilder().eq("fileName", documentSource).build()` when `documentSource` is present, calls `ragFilterContext.set(...)` before invoking the `ChatClient`, and clears it in a `finally`/`doFinally` block once the call (or stream) completes. When `documentSource` is absent, the supplier returns `null` and retrieval is unfiltered, as before.
+The `EmbeddingStoreContentRetriever` bean in `RagConfig` is a singleton, but the filter is
+per-request, so it can't be passed as a fixed builder argument. Instead,
+`dynamicFilter(Function<Query, Filter>)` is wired to `query -> ragFilterContext.get()` — a
+`ThreadLocal` holder (`com.org.llm.rag.RagFilterContext`). `LocalChatBackend` builds a `Filter`
+with `MetadataFilterBuilder.metadataKey("fileName").isEqualTo(documentSource)` when `documentSource`
+is present, calls `ragFilterContext.set(...)` before invoking the `ChatAssistant`, and clears it in
+a `finally`/`doFinally` block once the call (or stream) completes. When `documentSource` is absent,
+the function returns `null` and retrieval is unfiltered, as before.
 
 **Conversation ID flow**
 
-Each chat request passes `conversationId` through Spring AI's advisor parameter map:
+Each chat request passes `conversationId` as an `@MemoryId`-annotated parameter on the
+`AiServices` interface method:
 
 ```java
-spec.param(ChatMemory.CONVERSATION_ID, conversationId)
+String chat(@MemoryId String conversationId, @V("systemPrompt") String systemPrompt, @UserMessage String message);
 ```
 
-No per-request state lives in any Spring bean — the ID travels through `AdvisedRequest` metadata and is read by `MessageChatMemoryAdvisor` to fetch and save the correct message window. This is safe for concurrent requests with different conversation IDs on the same `ChatClient` instance.
+`AiServices` routes that value into the `ChatMemoryProvider` (`memoryId -> MessageWindowChatMemory...`)
+to fetch and save the correct message window — no per-request state lives in any Spring bean, the
+same statelessness Spring AI's `ChatMemory.CONVERSATION_ID` advisor parameter provided.
 
 **Query transformation playground**
 
-`CompressionQueryTransformer` is only one of several pre-retrieval query transformers Spring AI ships under `spring-ai-rag`. `POST /api/v1/rag/query-transform` exposes all four so each can be exercised independently of the main chat flow:
+`CompressingQueryTransformer` and `ExpandingQueryTransformer` are the only two pre-retrieval
+transformers LangChain4j ships (verified: `dev.langchain4j.rag.query.transformer` contains exactly
+these two plus the `QueryTransformer` interface and a no-op default). `POST
+/api/v1/rag/query-transform` exposes four techniques — the two real ones, plus two hand-written
+replacements for capabilities LangChain4j doesn't have:
 
-| Technique | Spring AI class | What it does |
+| Technique | Backing implementation | What it does |
 |---|---|---|
-| `REWRITE` | `RewriteQueryTransformer` | Rewrites a messy/conversational query into a clean, standalone search query |
-| `TRANSLATE` | `TranslationQueryTransformer` | Translates the query into the language of the indexed documents (defaults to English) |
-| `COMPRESS` | `CompressionQueryTransformer` | Folds conversation history + the current query into one standalone query |
-| `MULTI_QUERY_EXPAND` | `MultiQueryExpander` | Generates several paraphrased variants of the query to improve recall |
+| `REWRITE` | Custom prompt against the deterministic RAG `ChatModel` (no LangChain4j class exists) | Rewrites a messy/conversational query into a clean, standalone search query |
+| `TRANSLATE` | Custom prompt against the deterministic RAG `ChatModel` (no LangChain4j class exists) | Translates the query into the language of the indexed documents (defaults to English) |
+| `COMPRESS` | `CompressingQueryTransformer` | Folds conversation history + the current query into one standalone query |
+| `MULTI_QUERY_EXPAND` | `ExpandingQueryTransformer` | Generates several paraphrased variants of the query to improve recall |
 
 ```json
 POST /api/v1/rag/query-transform
@@ -352,9 +406,22 @@ POST /api/v1/rag/query-transform
 }
 ```
 
-**Design — Strategy pattern.** Each technique is a `com.org.llm.rag.QueryTransformationStrategy` bean (`RewriteQueryStrategy`, `TranslateQueryStrategy`, `CompressQueryStrategy`, `MultiQueryExpansionStrategy`), tagged by a `QueryTransformationTechnique` enum value. `QueryTransformationService` collects all of them via constructor injection (`List<QueryTransformationStrategy>`) into a `Map<QueryTransformationTechnique, QueryTransformationStrategy>` and dispatches each request to the matching one — no `if`/`switch` chain, and adding a fifth technique (e.g. HyDE or step-back prompting) only means adding one more `@Component`, nothing else changes. The four underlying transformer/expander beans live in `RagConfig`, built from a shared low-temperature `ChatClient.Builder` (`ragChatClientBuilder`) so transformation calls stay deterministic and never touch the main conversation's options. `RewriteQueryTransformer` and `MultiQueryExpander` are configured once as singletons; `TranslationQueryTransformer` is built per-request inside its strategy because `targetLanguage` varies per call.
+**Design — Strategy pattern.** Each technique is a `com.org.llm.rag.QueryTransformationStrategy`
+bean (`RewriteQueryStrategy`, `TranslateQueryStrategy`, `CompressQueryStrategy`,
+`MultiQueryExpansionStrategy`), tagged by a `QueryTransformationTechnique` enum value.
+`QueryTransformationService` collects all of them via constructor injection
+(`List<QueryTransformationStrategy>`) into a `Map<QueryTransformationTechnique,
+QueryTransformationStrategy>` and dispatches each request to the matching one — no `if`/`switch`
+chain. The shared deterministic `ChatModel` bean (`ragChatModel`, temperature 0.0, `@Qualifier`-ed
+to disambiguate it from the main conversational `ChatModel`) backs `CompressQueryStrategy` and
+`MultiQueryExpansionStrategy` directly, and the two hand-written strategies (`RewriteQueryStrategy`,
+`TranslateQueryStrategy`) use it for their custom prompts — so transformation calls never affect
+the main conversation's temperature/options.
 
-This endpoint is a playground for inspecting each technique's raw output — it does not itself touch the vector store. The production retrieval path (`LocalChatBackend.chat()` / `.stream()`) wires `CompressionQueryTransformer` and `MultiQueryExpander` together via the `RetrievalAugmentationAdvisor` bean described above.
+This endpoint is a playground for inspecting each technique's raw output — it does not itself
+touch the embedding store. The production retrieval path (`LocalChatBackend.chat()` / `.stream()`)
+wires `CompressingQueryTransformer` and `ExpandingQueryTransformer` together via
+`CompressThenExpandQueryTransformer` and the `DefaultRetrievalAugmentor` bean described above.
 
 ---
 
@@ -362,31 +429,63 @@ This endpoint is a playground for inspecting each technique's raw output — it 
 
 **What it is.**
 
-- OpenAI provides GPT-series chat-completion models, the Whisper speech-recognition model, TTS voice-synthesis models, and DALL·E image-generation
+- OpenAI provides GPT-series chat-completion models, the Whisper speech-recognition model, TTS
+  voice-synthesis models, embedding models, a moderation model, and Dall·E image generation
 - Access is REST-based, authenticated with a bearer token supplied as `OPENAI_API_KEY`
 
 **How it's used here.**
 
-- In `llm-chat-agent`, when `app.gateway.enabled=false` (direct mode), `LocalChatBackend` calls OpenAI's chat-completion API via `ChatClient`
-- In `llm-image`, `LocalImageBackend` calls the image endpoint via the Stability AI or OpenAI image model
-- In `llm-audio`, `AudioService` calls Whisper with model `whisper-1` for transcription and `tts-1` with voice `echo` for speech synthesis
-- The API key is read from `OPENAI_API_KEY` (each module reads its own copy of the env var) and kept only in Spring AI auto-configuration — it never appears in business code
+- In `llm-chat-agent`, when `app.gateway.enabled=false` (direct mode), `LocalChatBackend` calls
+  OpenAI's chat-completion API via `ChatAssistant` (LangChain4j's `OpenAiChatModel`/`OpenAiStreamingChatModel`)
+- In `llm-image`, `LocalImageBackend` calls OpenAI's image endpoint via LangChain4j's
+  `OpenAiImageModel` (Dall-E)
+- In `llm-audio`, `AudioService` calls Whisper (`whisper-1`) via LangChain4j's
+  `OpenAiAudioTranscriptionModel` for transcription, and the **official OpenAI Java SDK directly**
+  (`com.openai:openai-java`, `client.audio().speech().create(...)`) with `tts-1`/voice `echo` for
+  speech synthesis — LangChain4j has no abstraction over this endpoint at all
+- The API key is read from `OPENAI_API_KEY` (each module reads its own copy of the env var) directly
+  via `@Value` in each module's `AIConfig`/`RagConfig` — LangChain4j has no auto-configuration to
+  hide it behind, so every model/client bean takes it as an explicit constructor argument
 - Each module's own `StartupValidator` fails the application at boot if its required key is missing, giving an immediate and unambiguous error
 
 ---
 
-### Stability AI
+### LangChain4j vs Spring AI 2.0 — Feature Comparison
 
-**What it is.**
+Built by inspecting the actual `dev.langchain4j` jars (`javap`, `unzip -l`) and the LangChain4j
+GitHub source for the version pinned here (1.16.3), not secondhand blog posts — several
+capabilities below don't show up clearly in the online docs.
 
-- Stability AI offers image-generation REST APIs including Stable Diffusion XL
-- Spring AI bundles a `spring-ai-starter-model-stability-ai` dependency that wraps the HTTP calls into a typed model interface
+| Capability | Spring AI 2.0 | LangChain4j 1.16.3 | Notes |
+|---|---|---|---|
+| Chat model abstraction | `ChatModel` + `ChatClient` (fluent builder, per-call advisors/tools) | `ChatModel` (sync) + `StreamingChatModel`; `AiServices` (declarative proxy, fixed at build time) | Two different mental models: Spring AI lets you reconfigure per call; LangChain4j fixes an interface's behavior once and passes per-call concerns as method parameters |
+| Streaming | `ChatClient.stream()` → `Flux<String>`/`ChatClientResponse` | `StreamingChatModel` + `TokenStream` (callback-based: `onPartialResponse`, `onRetrieved`, `onCompleteResponse`, `onError`) | LangChain4j's `TokenStream.onRetrieved` gives RAG citations natively mid-stream; Spring AI needs the advisor-context trick (`DOCUMENT_CONTEXT`) |
+| Conversation memory | `ChatMemory` + `MessageWindowChatMemory`; JDBC repo via `spring-ai-starter-model-chat-memory-repository-jdbc` (own DDL, `initialize-schema: always`) | `ChatMemory` + `MessageWindowChatMemory`; pluggable `ChatMemoryStore` **interface only** — no JDBC/SQL implementation ships at all | This repo hand-writes `JdbcChatMemoryStore` + its own Flyway migration to get JDBC persistence |
+| Guardrails / safety | `SafeGuardAdvisor` (sensitive-word blocking, advisor-ordered) | `InputGuardrail`/`OutputGuardrail` (`dev.langchain4j.guardrail`), richer result model (`success`/`failure`/`fatal`/`retry`/`reprompt`) — no advisor ordering since guardrails always run first | LangChain4j's guardrail API is more expressive (retry/reprompt verdicts) but has no concept of relative ordering among multiple guardrails |
+| Moderation | `ModerationModel` exists but no first-class `ChatClient` integration found in this version | `ModerationModel` + `@Moderate` annotation directly on `AiServices` methods | LangChain4j wires moderation *into* the service call declaratively; added here as an extra beyond parity |
+| RAG: retrieval | `VectorStoreDocumentRetriever` + `VectorStore` abstraction (many starters: Redis, PGVector, etc.) | `EmbeddingStoreContentRetriever` + `EmbeddingStore` abstraction (official Redis support deprecated at `1.0.0-alpha1`; current Redis support lives only in `langchain4j-community-redis`, a separate beta-versioned artifact) | Both are provider-pluggable; LangChain4j's Redis path specifically requires reaching into the community module, not the core one |
+| RAG: query transformation | `CompressionQueryTransformer`, `RewriteQueryTransformer`, `TranslationQueryTransformer`, `MultiQueryExpander` (4 distinct classes) | `CompressingQueryTransformer`, `ExpandingQueryTransformer` only — **no rewrite or translation transformer exists** | This repo hand-writes prompt-based replacements for REWRITE/TRANSLATE (see playground table above) |
+| RAG: orchestration | `RetrievalAugmentationAdvisor` (transformer **list** + separate query expander + retriever + joiner + augmenter) | `DefaultRetrievalAugmentor` (single `queryTransformer` slot + retriever + aggregator + injector) | Compress-then-expand needs a custom composing `QueryTransformer` in LangChain4j since there's no multi-transformer slot |
+| RAG: answer evaluation | `FactCheckingEvaluator`, `RelevancyEvaluator` (`EvaluationRequest`/`EvaluationResponse`) | **None found** — no evaluator class anywhere in the inspected jars | This repo replaces it with a hand-written `FaithfulnessJudge` (`AiServices` LLM-as-judge returning a structured verdict) |
+| Tool / function calling | `@Tool` (Spring AI), registered per `ChatClient.prompt().tools(...)` call | `@Tool` + `@P` (`dev.langchain4j.agent.tool`), registered via `AiServices.builder().tools(...)` at build time | Comparable capability; LangChain4j's `@P` gives per-parameter descriptions/required flags Spring AI's plain `@Tool` doesn't |
+| Structured output | `.call().entity(SomeRecord.class)` on `ChatClient` | `AiServices` interface methods returning a record/enum/POJO directly — JSON schema auto-derived via reflection (`JsonSchemas`), `@Description` for hints | Functionally equivalent; LangChain4j's is declarative on the interface rather than imperative on a call chain |
+| Multimodal input (image/PDF) | `.media(MimeType, Resource)` on `ChatClient`'s user spec | `ImageContent`/`PdfFileContent`/`TextContent` composed into a `UserMessage` | LangChain4j has a *dedicated* `PdfFileContent` type — confirmed to exist, not just image support |
+| Observability hooks | `SimpleLoggerAdvisor` (advisor-based) | `ChatModelListener` (`onRequest`/`onResponse`/`onError`, attached to the model builder, not the service) | Comparable; attachment point differs (model-level vs advisor-level) |
+| Embeddings | `EmbeddingModel` abstraction, many provider starters | `EmbeddingModel` abstraction, many provider integrations (core + community) | Comparable |
+| Image generation | `ImageModel` abstraction; official **Stability AI** starter (`spring-ai-starter-model-stability-ai`) | `ImageModel` abstraction; **OpenAI Dall-E only** — no Stability AI integration anywhere, including community modules | Confirmed by searching the full `dev.langchain4j` Maven Central artifact list and the `langchain4j-community` repo; this repo switched `llm-image`'s local backend to Dall-E as a result |
+| Audio transcription (STT) | `OpenAiAudioTranscriptionModel` | `AudioTranscriptionModel` + `OpenAiAudioTranscriptionModel` | Comparable |
+| Audio synthesis (TTS) | `OpenAiAudioSpeechModel` | **None** — zero speech-synthesis classes in any LangChain4j artifact | This repo calls the official OpenAI Java SDK directly for TTS, bypassing both frameworks |
+| Document loading/splitting | `DocumentReader` (PDF/Markdown/Tika starters) | `DocumentParser` (PDFBox, Tika, Apache POI, etc. — separate artifacts) + `DocumentSplitter`/`DocumentSplitters` + `EmbeddingStoreIngestor` | Comparable shape; this repo only pulls in the PDFBox parser since both source documents are PDFs |
+| Spring Boot integration | Native — auto-configuration, `application.yml` properties, starters for every provider | None used here — every model/client is a plain `@Bean` method; a `langchain4j-spring-boot-starter` family exists but wasn't adopted (see code for why) | Spring AI's biggest practical advantage for Spring users is auto-configuration; LangChain4j requires explicit bean wiring |
 
-**How it's used here.**
+**Three confirmed gaps, and how this repo works around each:**
 
-- `llm-image`'s `LocalImageBackend` calls `StabilityAiImageModel` to generate images when the gateway is disabled
-- The configured model is `stable-diffusion-xl-1024-v1-0`, set in `llm-image/application.yml` under `spring.ai.stabilityai.image.options.model`
-- When the gateway is enabled, image generation is re-routed through `GatewayImageBackend`, which calls the gateway's `/llm/image` endpoint requesting DALL·E 3 instead
+1. **Text-to-speech** — no LangChain4j abstraction exists at all. `llm-audio`'s `AudioService`
+   calls the official `com.openai:openai-java` SDK directly for `audio().speech().create(...)`.
+2. **Stability AI image generation** — zero integration, even in community modules.
+   `llm-image`'s `LocalImageBackend` switched to OpenAI Dall-E via LangChain4j's `ImageModel`.
+3. **RAG answer/fact-check evaluation** — no evaluator class anywhere. `AnswerEvaluator` now
+   delegates to a hand-written `FaithfulnessJudge` (`AiServices` LLM-as-judge pattern).
 
 ---
 
@@ -401,7 +500,7 @@ database per module, each with its own Flyway history table so migrations never 
 
 | Database | Module | Tables |
 |---|---|---|
-| `spring_ai` | `llm-chat-agent` | `spring_ai_chat_memory` (chat history, auto-created by Spring AI), `contacts` (weather/contacts tool seed data), `text2sql_customers / products / orders / order_items` (demo e-commerce schema), `api_keys` |
+| `spring_ai` | `llm-chat-agent` | `chat_memory` (LangChain4j `ChatMemoryStore` rows, V6), `ingested_documents` (document-ingestion tracking, V7), `contacts` (weather/contacts tool seed data), `text2sql_customers / products / orders / order_items` (demo e-commerce schema), `api_keys` |
 | `spring_ai_audio` | `llm-audio` | `api_keys` |
 | `spring_ai_image` | `llm-image` | `api_keys` |
 
@@ -409,9 +508,10 @@ The `spring_ai_audio` and `spring_ai_image` databases are created on first conta
 `observability/init-db/01-create-module-databases.sql` (mounted into
 `/docker-entrypoint-initdb.d`) — drop the `postgres_data` volume to re-run it against a fresh
 instance. Each module's `api_keys` table is independent, so a key minted for one module doesn't
-authenticate against another.
+authenticate against another. Database/table names kept their original `spring_ai*` naming from
+the source project — renaming infrastructure identifiers was out of scope for this migration.
 
-- `JdbcTemplate` (no ORM) is used for all custom SQL: key lookups, contacts queries, text-to-SQL execution, and schema introspection at runtime
+- `JdbcTemplate` (no ORM) is used for all custom SQL: key lookups, contacts queries, text-to-SQL execution, chat-memory persistence, document-ingestion tracking, and schema introspection at runtime
 - The `pgcrypto` extension is enabled in migration V5 to hash the development seed key inline
 
 ---
@@ -425,7 +525,7 @@ authenticate against another.
 
 **How it's used here.**
 
-- Five versioned scripts (`V1` through `V5`) under `src/main/resources/db/migration` set up all tables and seed data
+- Seven versioned scripts (`V1` through `V7`) under `src/main/resources/db/migration` set up all tables and seed data — `V6` and `V7` are new, backing `JdbcChatMemoryStore` and `DocumentIngestionRunner` respectively (LangChain4j ships neither schema itself)
 - A separate history table (`flyway_schema_history_chat`) is used — distinct from the gateway and RAG services — so all three sibling services can share the same Postgres instance without migration-history conflicts
 - `baseline-on-migrate: true` allows Flyway to adopt an already-initialised schema on first run without failing
 - Spring Boot 4 requires the `spring-boot-flyway` module explicitly on the classpath — `flyway-core` alone no longer triggers `FlywayAutoConfiguration`
@@ -440,10 +540,17 @@ authenticate against another.
 
 **How it's used here.**
 
-- **Vector store**: `spring-ai-starter-vector-store-redis` initialises a vector index on startup (`initialize-schema: true`) so the RAG advisor can embed and retrieve document chunks from uploaded PDFs (e.g., `AtlasCorp-TravelPolicy.pdf`)
-- **Connection**: `RedisConfig` creates a `JedisConnectionFactory` (using the Jedis client) pointing at `localhost:6379` by default, overridable via `REDIS_HOST` / `REDIS_PORT`
+- **Embedding store**: `langchain4j-community-redis`'s `RedisEmbeddingStore` is built directly in
+  `RagConfig` against a `JedisPooled` client (host/port/db/auth read from `spring.data.redis.*`
+  properties via plain `@Value` injection — there's no Spring Boot starter wiring this
+  automatically, unlike Spring AI's `spring-ai-starter-vector-store-redis`) and creates its vector
+  index (`FT.CREATE`) on construction
+- **Connection**: the `JedisPooled` bean in `RagConfig` replaces the old `RedisConfig`'s
+  `JedisConnectionFactory` (a Spring Data Redis type, no longer on the classpath) — same
+  host/port/database/username/password properties, just consumed directly by LangChain4j's Redis
+  module instead of through Spring Data Redis
 - **Docker**: Redis is started with `appendonly yes` (AOF persistence), a 512 MB memory cap, and an `allkeys-lru` eviction policy so vector data survives restarts and old entries are evicted gracefully under memory pressure
-- **RedisInsight**: A companion `redis/redisinsight` container (port 5540) provides a browser UI for inspecting vector-store contents during development
+- **RedisInsight**: A companion `redis/redisinsight` container (port 5540) provides a browser UI for inspecting embedding-store contents during development
 
 ---
 
@@ -462,6 +569,7 @@ authenticate against another.
 4. **`SecurityConfig`** declares which paths are open (actuator, static HTML, `/error`) and which require authentication; also configures CORS (`CORS_ALLOWED_ORIGINS`) and security headers
 5. **`RestAuthenticationEntryPoint`** returns a structured JSON `{"status":401,...}` error rather than the default HTML challenge page
 - Auth can be fully disabled for local development via `API_AUTH_ENABLED=false`
+- Not used at all in `llm-playground` — that module has no security dependency, no `api_keys` table, and every endpoint is open
 
 ---
 
@@ -538,43 +646,64 @@ authenticate against another.
 
 **How it's used here.**
 
-- The streaming chat endpoint (`/chat/stream`) returns a `Flux<String>` that `ChatBackend` implementations produce
-- In `LocalChatBackend`, Spring AI's `ChatClient.stream()` method returns a `Flux<String>` of token chunks directly from the model
-- In `GatewayChatBackend`, `WebClient` (Spring's reactive HTTP client) connects to the gateway's SSE stream and returns the same `Flux<String>`
+- `spring-boot-starter-webflux` is now a **direct** dependency in `llm-chat-agent`/`llm-audio`/`llm-image`
+  (it used to arrive transitively via Spring AI's RAG/vector-store starters) — needed purely for
+  `WebClient`, `Flux`, and the reactive SSE codec (`ServerSentEvent`); the servlet stack still wins
+  since `spring-boot-starter-web` is also present, so this doesn't turn the app into a WebFlux server
+- The streaming chat endpoint (`/chat/stream`) returns a `Flux<ServerSentEvent<String>>` that `ChatBackend` implementations produce
+- In `LocalChatBackend`, a `Flux.create(sink -> chatAssistant.chatStream(...).onPartialResponse(...).onRetrieved(...).onCompleteResponse(...).onError(...).start())` bridges LangChain4j's callback-based `TokenStream` into a reactive `Flux`
+- In `GatewayChatBackend`, `WebClient` (Spring's reactive HTTP client) connects to the gateway's SSE stream and returns the same `Flux<ServerSentEvent<String>>`
 - The controller maps this `Flux` to `MediaType.TEXT_EVENT_STREAM_VALUE` so browsers receive a true Server-Sent Events response
 - `WebClient` is also used for all non-streaming gateway calls, where `.block()` converts the reactive result to a blocking call within a configured timeout
 
 ---
 
-### Apache Tika / PDF and Markdown Document Readers
+### LangChain4j Document Loading (Apache PDFBox)
 
 **What it is.**
 
-- Apache Tika is a content-analysis toolkit that can extract text and metadata from hundreds of file formats (PDF, DOCX, HTML, etc.)
-- Spring AI's document readers wrap Tika, PDFBox, and a Markdown parser into a unified `DocumentReader` API
+- `langchain4j-document-parser-apache-pdfbox` wraps Apache PDFBox into LangChain4j's
+  `DocumentParser` interface — `parse(InputStream): Document`. LangChain4j ships separate parser
+  artifacts per format (PDFBox, Apache Tika, Apache POI, …) rather than one bundled reader, and a
+  separate `DocumentSplitters`/`DocumentSplitter` API for chunking, composed together by
+  `EmbeddingStoreIngestor`
 
 **How it's used here.**
 
-- `spring-ai-tika-document-reader` is on the classpath so the `FileReadService` and RAG flows can ingest arbitrary uploaded files regardless of format
-- `spring-ai-pdf-document-reader` provides a dedicated page/paragraph split mode controlled by `app.loader.pdf.mode`
-- The pre-loaded corporate travel policy PDFs (`AtlasCorp-TravelPolicy.pdf`, `AtlasCorp_Events_Holidays.pdf`) are referenced as `ClassPathResource` objects for advisor context
-- `spring-ai-markdown-document-reader` handles `.md` files in the same unified pipeline
+- `DocumentIngestionRunner` parses the two corporate PDFs (`AtlasCorp-TravelPolicy.pdf`,
+  `AtlasCorp_Events_Holidays.pdf`) with `ApachePdfBoxDocumentParser`, attaches `fileName`/`source`/
+  `identity` metadata, splits with `DocumentSplitters.recursive(500, 100)`, and ingests via
+  `EmbeddingStoreIngestor` into the Redis embedding store — gated by a Postgres
+  `ingested_documents` tracking table so restarts don't re-embed (and duplicate) the same content
+- Only the PDFBox parser is pulled in (`langchain4j-document-parser-apache-tika` and a Markdown
+  equivalent were dropped) because both source documents are PDFs and neither Tika nor Markdown
+  parsing was actually exercised by any class in the original Spring AI version either
+- `ApachePdfBoxDocumentParser` extracts whole-document text, not per-page — there's no
+  page-aware reading mode here the way Spring AI's PDF reader had, so `Citation.page` is always
+  `null` in this implementation (kept nullable rather than removed, see `Citation`'s javadoc)
 
 ---
 
-### JDBC Chat Memory (Spring AI)
+### JDBC Chat Memory (LangChain4j `ChatMemoryStore`)
 
 **What it is.**
 
-- Spring AI's `spring-ai-starter-model-chat-memory-repository-jdbc` module stores conversation messages in a relational table (`spring_ai_chat_memory`) and ships its own DDL
-- Configured with `initialize-schema: always` so the table is created automatically without a custom migration
+- LangChain4j's `dev.langchain4j.store.memory.chat.ChatMemoryStore` is a three-method interface
+  (`getMessages`/`updateMessages`/`deleteMessages`) for pluggable conversation persistence — the
+  default implementation is in-memory only; **no JDBC, Redis, or any other persistent
+  implementation ships in LangChain4j core** (a `RedisChatMemoryStore` does exist in
+  `langchain4j-community-redis`, but this project keeps chat memory on Postgres, separate from the
+  Redis-backed embedding store, matching the original architecture's separation of concerns)
 
 **How it's used here.**
 
-- `JdbcChatMemoryRepository` is auto-configured and injected into `AIConfig.chatMemory()`, which wraps it in a `MessageWindowChatMemory` with a 50-message window
-- The `MessageChatMemoryAdvisor` on every `ChatClient` call looks up the last 50 messages for the `conversationId` parameter passed in each request
-- Prior messages are prepended to the prompt as context, and the new exchange is appended after the model responds
-- This gives the service stateful multi-turn memory across HTTP requests with no in-process state — memory survives restarts automatically
+- `JdbcChatMemoryStore` implements the three methods directly against a `chat_memory` table
+  (`db/migration/V6__create_chat_memory.sql`): one row per conversation, the full message list
+  serialized to JSON via LangChain4j's own `ChatMessageSerializer`/`ChatMessageDeserializer`
+- `AIConfig.chatMemoryProvider()` wraps it in a `MessageWindowChatMemory` capped at 50 messages,
+  built fresh per `memoryId` (LangChain4j's per-conversation memory is request-scoped by design,
+  unlike Spring AI's single shared `ChatMemory` bean keyed by a parameter)
+- This gives the service stateful multi-turn memory across HTTP requests with no in-process state — memory survives restarts automatically, the same guarantee the Spring AI version had
 
 ---
 
@@ -590,6 +719,12 @@ authenticate against another.
 - `@RequiredArgsConstructor` on service and component classes generates the constructor used by Spring's constructor injection — no `@Autowired` annotations needed
 - `@Slf4j` injects a `log` field backed by SLF4J/Logback into every annotated class
 - `@AllArgsConstructor` appears on `AudioService` where all fields need explicit initialisation
+- **Caution discovered during this migration**: `@Transactional` on a bean LangChain4j's
+  `AiServices` tool scanner inspects forces Spring to wrap it in a CGLIB subclass proxy, and the
+  scanner reflects on the proxy's own declared methods — which don't carry the original class's
+  `@Tool` annotations — so a `@Transactional`-proxied tool bean fails to register at all. `ContactsTool`
+  dropped its `@Transactional(readOnly = true)` for exactly this reason (a single `JdbcTemplate`
+  query doesn't need an explicit transaction boundary anyway)
 - Lombok is excluded from the final fat-jar via `spring-boot-maven-plugin`'s exclude list because it is a compile-time-only tool with no runtime dependency
 
 ---
@@ -605,7 +740,13 @@ authenticate against another.
 
 - `TestcontainersConfiguration` defines a `@ServiceConnection PostgreSQLContainer<>("postgres:18")` bean
 - When `LLMApplicationTests` loads the context, Spring Boot auto-overrides the datasource URL with the container's random mapped port
-- Flyway migrations, the JDBC chat-memory schema, and all JDBC queries in tests run against a real Postgres 18 instance
+- There's **no Redis container** here anymore: `@ServiceConnection`'s generic-container factory
+  targets Spring Data Redis's `RedisConnectionDetails`, which isn't on the classpath (LangChain4j's
+  Redis support doesn't go through Spring Data Redis at all). `LLMApplicationTests` instead
+  `@MockitoBean`-replaces the `EmbeddingStore` bean directly, sidestepping both that wiring gap and
+  the fact that a real `RedisEmbeddingStore` would need the RediSearch module (`redis/redis-stack-server`)
+  on construction, not the plain `redis:7-alpine` image used elsewhere in this repo
+- Flyway migrations and all JDBC queries in tests run against a real Postgres 18 instance
 - The suite is fully self-contained and runs in CI with only Docker available — no locally provisioned database required
 
 ---
@@ -619,7 +760,7 @@ authenticate against another.
 
 **How it's used here.**
 
-- The `jacoco-maven-plugin` (version 0.8.13) is configured with two executions: `prepare-agent` (attaches the JaCoCo agent before tests run) and `report` (bound to the `verify` phase, producing HTML/XML reports under `target/site/jacoco`)
+- The `jacoco-maven-plugin` is configured with two executions: `prepare-agent` (attaches the JaCoCo agent before tests run) and `report` (bound to the `verify` phase, producing HTML/XML reports under `target/site/jacoco`)
 - Running `./mvnw verify` compiles, runs all tests, and generates the full coverage report in one step
 
 ---

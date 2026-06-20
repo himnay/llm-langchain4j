@@ -1,23 +1,19 @@
 package com.org.llm.service;
 
-import com.openai.models.audio.AudioResponseFormat;
+import com.openai.client.OpenAIClient;
+import com.openai.core.http.HttpResponse;
+import com.openai.models.audio.speech.SpeechCreateParams;
 import com.org.llm.model.StoredAudio;
+import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.model.audio.AudioTranscriptionModel;
+import dev.langchain4j.model.audio.AudioTranscriptionRequest;
+import dev.langchain4j.model.audio.AudioTranscriptionResponse;
 import lombok.AllArgsConstructor;
-import org.springframework.ai.audio.transcription.AudioTranscriptionOptions;
-import org.springframework.ai.audio.transcription.AudioTranscriptionPrompt;
-import org.springframework.ai.audio.transcription.AudioTranscriptionResponse;
-import org.springframework.ai.audio.tts.TextToSpeechPrompt;
-import org.springframework.ai.audio.tts.TextToSpeechResponse;
-import org.springframework.ai.openai.OpenAiAudioSpeechModel;
-import org.springframework.ai.openai.OpenAiAudioSpeechOptions;
-import org.springframework.ai.openai.OpenAiAudioTranscriptionModel;
-import org.springframework.ai.openai.OpenAiAudioTranscriptionOptions;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,10 +24,11 @@ import java.util.UUID;
 @AllArgsConstructor
 public class AudioService {
 
-    private static final Path AUDIO_DIR = Path.of(System.getProperty("java.io.tmpdir"), "spring-ai-audio");
+    private static final Path AUDIO_DIR = Path.of(System.getProperty("java.io.tmpdir"), "langchain4j-audio");
 
-    private final OpenAiAudioTranscriptionModel transcriptionModel;
-    private final OpenAiAudioSpeechModel speechModel;
+    private final AudioTranscriptionModel transcriptionModel;
+    /** LangChain4j has no text-to-speech abstraction — used only for {@link #textToSpeech}. */
+    private final OpenAIClient openAiClient;
 
     public StoredAudio store(MultipartFile file) {
         try {
@@ -61,31 +58,25 @@ public class AudioService {
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to read stored audio file: " + storedFileName, e);
         }
-        Resource audio = new ByteArrayResource(audioBytes) {
-            @Override
-            public String getFilename() {
-                return storedFileName;
-            }
-        };
 
-        AudioTranscriptionOptions options = OpenAiAudioTranscriptionOptions.builder()
-                .model("whisper-1")
-                .responseFormat(AudioResponseFormat.JSON)
-                .build();
-
-        AudioTranscriptionPrompt prompt = new AudioTranscriptionPrompt(audio, options);
-        AudioTranscriptionResponse response = transcriptionModel.call(prompt);
-        return response.getResult().getOutput();
+        Audio audio = Audio.builder().binaryData(audioBytes).build();
+        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder(audio).build();
+        AudioTranscriptionResponse response = transcriptionModel.transcribe(request);
+        return response.text();
     }
 
     public byte[] textToSpeech(String text) {
-        OpenAiAudioSpeechOptions options = OpenAiAudioSpeechOptions.builder()
+        SpeechCreateParams params = SpeechCreateParams.builder()
+                .input(text)
                 .model("tts-1") // tts-1, tts-1-hd
                 .voice("echo") // alloy, echo, fable, onyx, nova, shimmer
                 .build();
 
-        TextToSpeechPrompt prompt = new TextToSpeechPrompt(text, options);
-        TextToSpeechResponse response = speechModel.call(prompt);
-        return response.getResult().getOutput();
+        try (HttpResponse response = openAiClient.audio().speech().create(params);
+             InputStream body = response.body()) {
+            return body.readAllBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to read TTS audio response", e);
+        }
     }
 }

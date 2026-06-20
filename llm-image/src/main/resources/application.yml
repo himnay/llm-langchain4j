@@ -15,14 +15,6 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
       file-size-threshold: 2KB
-  ai:
-    openai:
-      api-key: ${OPENAI_API_KEY:sk-placeholder}
-    stabilityai:
-      api-key: ${STABILITYAI_API_KEY:sk-placeholder}
-      image:
-        options:
-          model: stable-diffusion-xl-1024-v1-0
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:spring_ai_image}
     username: ${POSTGRES_USER:postgres}
@@ -91,7 +83,7 @@ logging:
   level:
     root: INFO
     com.org.llm: INFO
-    org.springframework.ai: INFO
+    dev.langchain4j: INFO
     org.springframework.web: INFO
 
 resilience4j:
@@ -116,12 +108,16 @@ resilience4j:
 app:
   metadata:
     project-name: LLM Image
-    description: Production-grade Spring AI image backend — captioning and AI image generation.
+    description: LangChain4j image backend — captioning and AI image generation.
     group-id: com.org.llm
     artifact-id: llm-image
     project-version: 0.0.1-SNAPSHOT
-    spring-ai-version: 2.0.0
+    langchain4j-version: 1.16.3
     database: PostgreSQL
+  chat:
+    model: ${CHAT_MODEL:gpt-4o-mini}
+  image:
+    model: ${IMAGE_MODEL:dall-e-3}
   # ── Upstream LLM gateway ──────────────────────────────────────────────────────
   gateway:
     enabled: ${GATEWAY_ENABLED:true}             # route image generation via llm-gateway
