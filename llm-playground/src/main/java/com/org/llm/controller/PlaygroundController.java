@@ -42,7 +42,7 @@ class PlaygroundController {
 
     @PostMapping("/summarize")
     public String summarize(@Valid @RequestBody TextRequest request,
-                             @Positive @RequestParam(defaultValue = "3") int maxSentences) {
+                            @Positive @RequestParam(defaultValue = "3") int maxSentences) {
         return summarizerAssistant.summarize(request.text(), maxSentences);
     }
 

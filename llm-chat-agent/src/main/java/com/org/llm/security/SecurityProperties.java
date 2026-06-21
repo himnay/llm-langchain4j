@@ -18,31 +18,20 @@ import java.util.List;
 @ConfigurationProperties(prefix = "app.security")
 public class SecurityProperties {
 
-    /** When true (the default), protected routes require a valid {@link #header} value. */
+    private final RateLimit rateLimit = new RateLimit();
+    /**
+     * When true (the default), protected routes require a valid {@link #header} value.
+     */
     private boolean authEnabled = true;
-
-    /** Header carrying the raw API key. */
+    /**
+     * Header carrying the raw API key.
+     */
     @NotBlank
     private String header = "X-API-Key";
-
-    /** CORS allowed origins. Empty = CORS effectively disabled (no cross-origin browser access). */
+    /**
+     * CORS allowed origins. Empty = CORS effectively disabled (no cross-origin browser access).
+     */
     private List<String> allowedOrigins = List.of();
-
-    private final RateLimit rateLimit = new RateLimit();
-
-    /** Token-bucket rate limiting, keyed by API key (or client IP). */
-    public static class RateLimit {
-        private boolean enabled = true;
-        private int capacity = 120;
-        private int refillPerMinute = 120;
-
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
-        public int getCapacity() { return capacity; }
-        public void setCapacity(int capacity) { this.capacity = capacity; }
-        public int getRefillPerMinute() { return refillPerMinute; }
-        public void setRefillPerMinute(int refillPerMinute) { this.refillPerMinute = refillPerMinute; }
-    }
 
     public RateLimit getRateLimit() {
         return rateLimit;
@@ -70,5 +59,38 @@ public class SecurityProperties {
 
     public void setAllowedOrigins(List<String> allowedOrigins) {
         this.allowedOrigins = allowedOrigins;
+    }
+
+    /**
+     * Token-bucket rate limiting, keyed by API key (or client IP).
+     */
+    public static class RateLimit {
+        private boolean enabled = true;
+        private int capacity = 120;
+        private int refillPerMinute = 120;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getCapacity() {
+            return capacity;
+        }
+
+        public void setCapacity(int capacity) {
+            this.capacity = capacity;
+        }
+
+        public int getRefillPerMinute() {
+            return refillPerMinute;
+        }
+
+        public void setRefillPerMinute(int refillPerMinute) {
+            this.refillPerMinute = refillPerMinute;
+        }
     }
 }

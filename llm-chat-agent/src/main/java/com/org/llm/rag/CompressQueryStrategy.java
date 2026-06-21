@@ -13,12 +13,26 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Compresses conversation history plus the current query into a single standalone query. */
+/**
+ * Compresses conversation history plus the current query into a single standalone query.
+ */
 @Component
 @RequiredArgsConstructor
 class CompressQueryStrategy implements QueryTransformationStrategy {
 
     private final CompressingQueryTransformer compressingQueryTransformer;
+
+    // Alternating turns, oldest first, starting with the user — see QueryTransformRequest#history
+    private static List<ChatMessage> toHistory(List<String> turns) {
+        List<ChatMessage> history = new ArrayList<>();
+        if (turns == null) {
+            return history;
+        }
+        for (int i = 0; i < turns.size(); i++) {
+            history.add(i % 2 == 0 ? UserMessage.from(turns.get(i)) : AiMessage.from(turns.get(i)));
+        }
+        return history;
+    }
 
     @Override
     public QueryTransformationTechnique technique() {
@@ -34,17 +48,5 @@ class CompressQueryStrategy implements QueryTransformationStrategy {
                 .build();
         Query query = new Query(request.query(), metadata);
         return compressingQueryTransformer.transform(query).stream().map(Query::text).toList();
-    }
-
-    // Alternating turns, oldest first, starting with the user — see QueryTransformRequest#history
-    private static List<ChatMessage> toHistory(List<String> turns) {
-        List<ChatMessage> history = new ArrayList<>();
-        if (turns == null) {
-            return history;
-        }
-        for (int i = 0; i < turns.size(); i++) {
-            history.add(i % 2 == 0 ? UserMessage.from(turns.get(i)) : AiMessage.from(turns.get(i)));
-        }
-        return history;
     }
 }

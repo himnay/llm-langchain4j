@@ -23,18 +23,6 @@ public class ChatAgentConfig {
     private static final String REQUEST_ID_MDC_KEY = "requestId";
     private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
 
-    @Bean
-    WebClient chatAgentWebClient(ChatAgentProperties properties) {
-        WebClient.Builder builder = WebClient.builder()
-                .baseUrl(properties.getBaseUrl())
-                .filter(correlationIdFilter());
-
-        if (properties.getApiKey() != null && !properties.getApiKey().isBlank()) {
-            builder.defaultHeader("X-API-Key", properties.getApiKey());
-        }
-        return builder.build();
-    }
-
     private static ExchangeFilterFunction correlationIdFilter() {
         return ExchangeFilterFunction.ofRequestProcessor(clientRequest -> {
             String requestId = MDC.get(REQUEST_ID_MDC_KEY);
@@ -46,5 +34,17 @@ public class ChatAgentConfig {
             }
             return reactor.core.publisher.Mono.just(clientRequest);
         });
+    }
+
+    @Bean
+    WebClient chatAgentWebClient(ChatAgentProperties properties) {
+        WebClient.Builder builder = WebClient.builder()
+                .baseUrl(properties.getBaseUrl())
+                .filter(correlationIdFilter());
+
+        if (properties.getApiKey() != null && !properties.getApiKey().isBlank()) {
+            builder.defaultHeader("X-API-Key", properties.getApiKey());
+        }
+        return builder.build();
     }
 }

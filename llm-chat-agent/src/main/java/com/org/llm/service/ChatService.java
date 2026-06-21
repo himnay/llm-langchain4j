@@ -22,6 +22,18 @@ public class ChatService {
 
     private final ChatBackend chatBackend;
 
+    private static String systemPrompt() {
+        String today = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
+        return "Today's date is " + today + ". " +
+                "You are a friendly travel guide. Suggest 3 attractions and 1 food item.";
+    }
+
+    private static String normalizeConversationId(String conversationId) {
+        return (conversationId == null || conversationId.isBlank())
+                ? UUID.randomUUID().toString()
+                : conversationId;
+    }
+
     @CircuitBreaker(name = "llm-chat", fallbackMethod = "chatFallback")
     @Retry(name = "llm-chat")
     public ChatAnswer chat(String conversationId, String message) {
@@ -52,17 +64,5 @@ public class ChatService {
     private ChatAnswer chatFallbackWithSource(String conversationId, String message, String documentSource, Throwable t) {
         log.warn("ChatService circuit breaker fallback for conversationId={}: {}", conversationId, t.getMessage());
         return new ChatAnswer("I'm temporarily unavailable. Please try again in a moment.", List.of(), null);
-    }
-
-    private static String systemPrompt() {
-        String today = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
-        return "Today's date is " + today + ". " +
-                "You are a friendly travel guide. Suggest 3 attractions and 1 food item.";
-    }
-
-    private static String normalizeConversationId(String conversationId) {
-        return (conversationId == null || conversationId.isBlank())
-                ? UUID.randomUUID().toString()
-                : conversationId;
     }
 }

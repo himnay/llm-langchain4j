@@ -28,15 +28,15 @@ public class TravelGuideService {
         this.travelGuideTemplate = PromptTemplate.from(readResource(travelGuideResource));
     }
 
-    public TravelPlan prepareTravelPlan(String city, Integer days) {
-        return travelPlanBackend.plan(travelGuideTemplate, Map.of("city", city, "days", days));
-    }
-
     private static String readResource(Resource resource) {
         try {
             return resource.getContentAsString(StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to read travel-guide prompt template", e);
         }
+    }
+
+    public TravelPlan prepareTravelPlan(String city, Integer days) {
+        return travelPlanBackend.plan(travelGuideTemplate, Map.of("city", city, "days", days));
     }
 }

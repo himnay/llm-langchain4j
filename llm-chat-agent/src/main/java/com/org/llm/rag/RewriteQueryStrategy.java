@@ -38,7 +38,7 @@ class RewriteQueryStrategy implements QueryTransformationStrategy {
                 Rewrite the query below into a clean, standalone search query suitable for %s.
                 Remove conversational filler, keep every important search term, and return ONLY
                 the rewritten query — no markdown, no explanation.
-
+                
                 Query: %s
                 """.formatted(TARGET_SEARCH_SYSTEM, request.query());
         return List.of(ragChatModel.chat(prompt).trim());

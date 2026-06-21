@@ -14,7 +14,7 @@ public interface ExtractionAssistant {
     @UserMessage("""
             Extract the person's details from the text below. Use null for fields not mentioned,
             and an empty list for interests if none are mentioned.
-
+            
             Text: {{text}}
             """)
     ExtractedPerson extract(@V("text") String text);

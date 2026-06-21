@@ -36,7 +36,7 @@ class TranslateQueryStrategy implements QueryTransformationStrategy {
         String prompt = """
                 Translate the query below into %s. Return ONLY the translated query — no markdown,
                 no explanation, no quotes.
-
+                
                 Query: %s
                 """.formatted(targetLanguage, request.query());
         return List.of(ragChatModel.chat(prompt).trim());

@@ -48,10 +48,10 @@ class RagConfig {
 
     @Bean
     JedisPooled jedisPooled(@Value("${spring.data.redis.host:localhost}") String host,
-                             @Value("${spring.data.redis.port:6379}") int port,
-                             @Value("${spring.data.redis.database:0}") int database,
-                             @Value("${spring.data.redis.username:}") String username,
-                             @Value("${spring.data.redis.password:}") String password) {
+                            @Value("${spring.data.redis.port:6379}") int port,
+                            @Value("${spring.data.redis.database:0}") int database,
+                            @Value("${spring.data.redis.username:}") String username,
+                            @Value("${spring.data.redis.password:}") String password) {
         JedisClientConfig clientConfig = DefaultJedisClientConfig.builder()
                 .database(database)
                 .user(username.isBlank() ? null : username)
@@ -62,7 +62,7 @@ class RagConfig {
 
     @Bean
     EmbeddingModel embeddingModel(@Value("${app.embedding.model:text-embedding-3-small}") String modelName,
-                                   @Value("${OPENAI_API_KEY:sk-placeholder}") String apiKey) {
+                                  @Value("${OPENAI_API_KEY:sk-placeholder}") String apiKey) {
         return OpenAiEmbeddingModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
@@ -71,9 +71,9 @@ class RagConfig {
 
     @Bean
     EmbeddingStore<TextSegment> embeddingStore(JedisPooled jedisPooled,
-                                                @Value("${app.embedding.dimension:1536}") int dimension,
-                                                @Value("${app.rag.redis.index-name:travel-documents}") String indexName,
-                                                @Value("${app.rag.redis.prefix:travel-documents:}") String prefix) {
+                                               @Value("${app.embedding.dimension:1536}") int dimension,
+                                               @Value("${app.rag.redis.index-name:travel-documents}") String indexName,
+                                               @Value("${app.rag.redis.prefix:travel-documents:}") String prefix) {
         return RedisEmbeddingStore.builder()
                 .unifiedJedis(jedisPooled)
                 .indexName(indexName)
@@ -113,15 +113,15 @@ class RagConfig {
 
     @Bean
     QueryTransformer queryTransformer(CompressingQueryTransformer compressingQueryTransformer,
-                                       ExpandingQueryTransformer expandingQueryTransformer) {
+                                      ExpandingQueryTransformer expandingQueryTransformer) {
         return new CompressThenExpandQueryTransformer(compressingQueryTransformer, expandingQueryTransformer);
     }
 
     @Bean
     ContentRetriever contentRetriever(EmbeddingStore<TextSegment> embeddingStore,
-                                       EmbeddingModel embeddingModel,
-                                       RagFilterContext ragFilterContext,
-                                       RetrievedContentContext retrievedContentContext) {
+                                      EmbeddingModel embeddingModel,
+                                      RagFilterContext ragFilterContext,
+                                      RetrievedContentContext retrievedContentContext) {
         // dynamicFilter ignores the Query argument and reads the ThreadLocal LocalChatBackend sets
         // before each call — the same per-request document-scoping trick Spring AI's
         // VectorStoreDocumentRetriever.filterExpression(ragFilterContext::get) used.
@@ -146,9 +146,9 @@ class RagConfig {
 
     @Bean
     RetrievalAugmentor retrievalAugmentor(QueryTransformer queryTransformer,
-                                           ContentRetriever contentRetriever,
-                                           ContentAggregator contentAggregator,
-                                           ContentInjector contentInjector) {
+                                          ContentRetriever contentRetriever,
+                                          ContentAggregator contentAggregator,
+                                          ContentInjector contentInjector) {
         return DefaultRetrievalAugmentor.builder()
                 .queryTransformer(queryTransformer)
                 .contentRetriever(contentRetriever)

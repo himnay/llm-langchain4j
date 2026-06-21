@@ -9,7 +9,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-/** Uses {@link TravelPlanAssistant}'s structured-output support to map straight to {@link TravelPlan}. */
+/**
+ * Uses {@link TravelPlanAssistant}'s structured-output support to map straight to {@link TravelPlan}.
+ */
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "app.gateway", name = "enabled", havingValue = "false")

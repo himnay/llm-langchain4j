@@ -41,6 +41,33 @@ class ChatController {
     private final TravelGuideService travelGuideService;
     private final ChatMemoryStore chatMemoryStore;
 
+    /**
+     * LangChain4j's message classes use record-style accessors (e.g. {@code text()}), not Jackson's
+     * {@code getX()} convention, so they're mapped to a plain view here rather than serialized as-is.
+     */
+    private static Map<String, Object> toView(ChatMessage message) {
+        String text = switch (message) {
+            case UserMessage m -> m.singleText();
+            case AiMessage m -> m.text();
+            case SystemMessage m -> m.text();
+            default -> message.toString();
+        };
+        return Map.of("role", message.type().name(), "text", text == null ? "" : text);
+    }
+
+    private static <T> Page<T> toPage(List<T> list, PageRequest pageRequest) {
+        if (list == null) {
+            return Page.empty(pageRequest);
+        }
+        int total = list.size();
+        int fromIndex = (int) pageRequest.getOffset();
+        if (fromIndex >= total) {
+            return new PageImpl<>(List.of(), pageRequest, total);
+        }
+        int toIndex = Math.min(fromIndex + pageRequest.getPageSize(), total);
+        return new PageImpl<>(list.subList(fromIndex, toIndex), pageRequest, total);
+    }
+
     @Operation(summary = "Send a chat message and receive a blocking response with RAG citations")
     @PostMapping
     public ChatAnswer chat(@Validated @RequestBody ChatRequest chatRequest) {
@@ -87,30 +114,5 @@ class ChatController {
                 .event("token")
                 .data("I'm temporarily unavailable. Please try again in a moment.")
                 .build());
-    }
-
-    /** LangChain4j's message classes use record-style accessors (e.g. {@code text()}), not Jackson's
-     *  {@code getX()} convention, so they're mapped to a plain view here rather than serialized as-is. */
-    private static Map<String, Object> toView(ChatMessage message) {
-        String text = switch (message) {
-            case UserMessage m -> m.singleText();
-            case AiMessage m -> m.text();
-            case SystemMessage m -> m.text();
-            default -> message.toString();
-        };
-        return Map.of("role", message.type().name(), "text", text == null ? "" : text);
-    }
-
-    private static <T> Page<T> toPage(List<T> list, PageRequest pageRequest) {
-        if (list == null) {
-            return Page.empty(pageRequest);
-        }
-        int total = list.size();
-        int fromIndex = (int) pageRequest.getOffset();
-        if (fromIndex >= total) {
-            return new PageImpl<>(List.of(), pageRequest, total);
-        }
-        int toIndex = Math.min(fromIndex + pageRequest.getPageSize(), total);
-        return new PageImpl<>(list.subList(fromIndex, toIndex), pageRequest, total);
     }
 }

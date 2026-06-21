@@ -37,10 +37,10 @@ public class DocumentIngestionRunner implements ApplicationRunner {
     private final String eventsPath;
 
     public DocumentIngestionRunner(JdbcTemplate jdbcTemplate,
-                                    EmbeddingModel embeddingModel,
-                                    EmbeddingStore<TextSegment> embeddingStore,
-                                    @Value("${app.documents.travel-policy.file.path}") String travelPolicyPath,
-                                    @Value("${app.documents.events.file.path}") String eventsPath) {
+                                   EmbeddingModel embeddingModel,
+                                   EmbeddingStore<TextSegment> embeddingStore,
+                                   @Value("${app.documents.travel-policy.file.path}") String travelPolicyPath,
+                                   @Value("${app.documents.events.file.path}") String eventsPath) {
         this.jdbcTemplate = jdbcTemplate;
         this.embeddingModel = embeddingModel;
         this.embeddingStore = embeddingStore;

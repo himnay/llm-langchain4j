@@ -18,14 +18,6 @@ public class ImageCaptionService {
 
     private final ChatModel chatModel;
 
-    public String captionImage(String imageName, String message) {
-        String base64 = readBase64("images/" + imageName);
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from(message),
-                ImageContent.from(base64, "image/jpeg"));
-        return chatModel.chat(userMessage).aiMessage().text();
-    }
-
     private static String readBase64(String classpathLocation) {
         try {
             byte[] bytes = new ClassPathResource(classpathLocation).getInputStream().readAllBytes();
@@ -33,5 +25,13 @@ public class ImageCaptionService {
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to read image: " + classpathLocation, e);
         }
+    }
+
+    public String captionImage(String imageName, String message) {
+        String base64 = readBase64("images/" + imageName);
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from(message),
+                ImageContent.from(base64, "image/jpeg"));
+        return chatModel.chat(userMessage).aiMessage().text();
     }
 }

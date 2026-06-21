@@ -27,7 +27,9 @@ public class GatewayClient {
         this.properties = properties;
     }
 
-    /** Image generation via {@code POST /llm/image}; returns the first image decoded from base64. */
+    /**
+     * Image generation via {@code POST /llm/image}; returns the first image decoded from base64.
+     */
     public byte[] generateImage(String prompt, Integer count) {
         GatewayImageResponse response = webClient.post()
                 .uri("/image")

@@ -22,18 +22,6 @@ public class GatewayConfig {
     private static final String REQUEST_ID_MDC_KEY = "requestId";
     private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
 
-    @Bean
-    WebClient gatewayWebClient(GatewayProperties properties) {
-        WebClient.Builder builder = WebClient.builder()
-                .baseUrl(properties.getBaseUrl())
-                .filter(correlationIdFilter());
-
-        if (properties.getApiKey() != null && !properties.getApiKey().isBlank()) {
-            builder.defaultHeader("X-API-Key", properties.getApiKey());
-        }
-        return builder.build();
-    }
-
     /**
      * {@link ExchangeFilterFunction} that reads the current request's {@code requestId} from MDC
      * and forwards it as {@code X-Correlation-ID} on every outbound gateway call.
@@ -49,5 +37,17 @@ public class GatewayConfig {
             }
             return reactor.core.publisher.Mono.just(clientRequest);
         });
+    }
+
+    @Bean
+    WebClient gatewayWebClient(GatewayProperties properties) {
+        WebClient.Builder builder = WebClient.builder()
+                .baseUrl(properties.getBaseUrl())
+                .filter(correlationIdFilter());
+
+        if (properties.getApiKey() != null && !properties.getApiKey().isBlank()) {
+            builder.defaultHeader("X-API-Key", properties.getApiKey());
+        }
+        return builder.build();
     }
 }

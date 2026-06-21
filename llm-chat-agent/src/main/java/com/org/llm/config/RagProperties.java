@@ -15,6 +15,11 @@ public class RagProperties {
      */
     private boolean evaluateFaithfulness = false;
 
-    public boolean isEvaluateFaithfulness() { return evaluateFaithfulness; }
-    public void setEvaluateFaithfulness(boolean evaluateFaithfulness) { this.evaluateFaithfulness = evaluateFaithfulness; }
+    public boolean isEvaluateFaithfulness() {
+        return evaluateFaithfulness;
+    }
+
+    public void setEvaluateFaithfulness(boolean evaluateFaithfulness) {
+        this.evaluateFaithfulness = evaluateFaithfulness;
+    }
 }

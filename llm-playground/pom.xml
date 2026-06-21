@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
@@ -14,7 +14,8 @@
     <name>llm-playground</name>
     <description>LangChain4j capability showcase — classification, structured extraction,
         summarization and standalone moderation: AiServices patterns the other modules don't
-        otherwise exercise.</description>
+        otherwise exercise.
+    </description>
 
     <dependencies>
         <dependency>

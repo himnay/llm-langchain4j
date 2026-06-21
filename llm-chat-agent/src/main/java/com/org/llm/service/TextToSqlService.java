@@ -64,10 +64,10 @@ public class TextToSqlService {
                 3) Prefer clear JOINs and aliases when needed.
                 4) Keep it safe and read-only.
                 5) Respect max rows %d by adding LIMIT when result can be multiple rows.
-
+                
                 Schema:
                 %s
-
+                
                 User question:
                 %s
                 """.formatted(maxRows, schemaContext, question);
@@ -81,16 +81,16 @@ public class TextToSqlService {
                 Return only corrected SQL (no markdown, no prose, no semicolon).
                 Keep it read-only and use only allowed schema.
                 Keep LIMIT <= %d for multi-row output.
-
+                
                 User question:
                 %s
-
+                
                 Previous SQL:
                 %s
-
+                
                 Database error:
                 %s
-
+                
                 Schema:
                 %s
                 """.formatted(maxRows, question, sql, error, schemaContext);
@@ -102,7 +102,7 @@ public class TextToSqlService {
         String prompt = """
                 Explain this SQL in plain English in 3 short bullet points.
                 Include what data it fetches and how it filters/groups.
-
+                
                 User question: %s
                 SQL: %s
                 """.formatted(question, sql);

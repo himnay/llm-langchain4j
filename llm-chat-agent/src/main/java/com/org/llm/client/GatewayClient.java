@@ -28,7 +28,9 @@ public class GatewayClient {
         this.properties = properties;
     }
 
-    /** Multi-turn chat via {@code POST /llm/chat} (session-backed memory lives in the gateway). */
+    /**
+     * Multi-turn chat via {@code POST /llm/chat} (session-backed memory lives in the gateway).
+     */
     public String chat(String systemPrompt, String userPrompt, String sessionId) {
         GatewayChatResponse response = webClient.post()
                 .uri("/chat")
@@ -40,7 +42,9 @@ public class GatewayClient {
         return extractText(response);
     }
 
-    /** One-shot, stateless completion via {@code POST /llm/query} (used for structured extraction). */
+    /**
+     * One-shot, stateless completion via {@code POST /llm/query} (used for structured extraction).
+     */
     public String query(String systemPrompt, String userPrompt) {
         GatewayChatResponse response = webClient.post()
                 .uri("/query")
@@ -52,7 +56,9 @@ public class GatewayClient {
         return extractText(response);
     }
 
-    /** Streaming chat via {@code POST /llm/{provider}/stream} (Server-Sent Events of token chunks). */
+    /**
+     * Streaming chat via {@code POST /llm/{provider}/stream} (Server-Sent Events of token chunks).
+     */
     public Flux<String> streamChat(String userPrompt, String sessionId) {
         return webClient.post()
                 .uri("/{provider}/stream", properties.getProvider())

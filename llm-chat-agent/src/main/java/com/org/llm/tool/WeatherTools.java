@@ -21,7 +21,7 @@ public class WeatherTools {
 
     @Tool("Get weather forecast for a given city and date (yyyy-MM-dd). If date is not provided, defaults to today.")
     public WeatherResult getWeather(@P("city to forecast") String city,
-                                     @P(value = "forecast date, yyyy-MM-dd", required = false) String date) {
+                                    @P(value = "forecast date, yyyy-MM-dd", required = false) String date) {
         log.info("Getting weather for city: " + city);
         try {
             // Build API URL

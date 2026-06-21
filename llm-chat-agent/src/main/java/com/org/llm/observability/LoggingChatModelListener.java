@@ -7,7 +7,9 @@ import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-/** Logs every chat-model request/response/error — replaces Spring AI's {@code SimpleLoggerAdvisor}. */
+/**
+ * Logs every chat-model request/response/error — replaces Spring AI's {@code SimpleLoggerAdvisor}.
+ */
 @Slf4j
 @Component
 public class LoggingChatModelListener implements ChatModelListener {

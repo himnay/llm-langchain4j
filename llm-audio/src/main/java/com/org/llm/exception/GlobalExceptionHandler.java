@@ -23,7 +23,9 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /** Bean-validation failures on {@code @Valid} request bodies. */
+    /**
+     * Bean-validation failures on {@code @Valid} request bodies.
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
@@ -33,32 +35,42 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "Validation failed", "One or more fields are invalid", fieldErrors);
     }
 
-    /** Bean-validation failures on {@code @Validated} method parameters. */
+    /**
+     * Bean-validation failures on {@code @Validated} method parameters.
+     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiError> handleConstraint(ConstraintViolationException ex) {
         return build(HttpStatus.BAD_REQUEST, "Validation failed", ex.getMessage(), null);
     }
 
-    /** Malformed / empty JSON body. */
+    /**
+     * Malformed / empty JSON body.
+     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException ex) {
         return build(HttpStatus.BAD_REQUEST, "Malformed request", "Request body is missing or not valid JSON", null);
     }
 
-    /** Audio file validation failures — empty file, unsupported content type. */
+    /**
+     * Audio file validation failures — empty file, unsupported content type.
+     */
     @ExceptionHandler(AudioValidationException.class)
     public ResponseEntity<ApiError> handleAudioValidation(AudioValidationException ex) {
         return build(HttpStatus.BAD_REQUEST, "Invalid audio", ex.getMessage(), null);
     }
 
-    /** Upload exceeded the configured multipart limit. */
+    /**
+     * Upload exceeded the configured multipart limit.
+     */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiError> handleMaxUpload(MaxUploadSizeExceededException ex) {
         return build(HttpStatus.PAYLOAD_TOO_LARGE, "Upload too large",
                 "The uploaded file exceeds the maximum allowed size", null);
     }
 
-    /** File / IO failures (audio handling). */
+    /**
+     * File / IO failures (audio handling).
+     */
     @ExceptionHandler({IOException.class, UncheckedIOException.class})
     public ResponseEntity<ApiError> handleIo(Exception ex) {
         log.error("IO error handling request", ex);

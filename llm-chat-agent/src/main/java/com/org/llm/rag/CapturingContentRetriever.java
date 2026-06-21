@@ -7,7 +7,9 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
-/** Decorator that records every retrieval's results into {@link RetrievedContentContext}. */
+/**
+ * Decorator that records every retrieval's results into {@link RetrievedContentContext}.
+ */
 @RequiredArgsConstructor
 public class CapturingContentRetriever implements ContentRetriever {
 

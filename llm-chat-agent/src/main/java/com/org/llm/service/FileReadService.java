@@ -18,14 +18,6 @@ public class FileReadService {
 
     private final ChatModel chatModel;
 
-    public String readFile(String fileName, String message) {
-        String base64 = readBase64("files/" + fileName);
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from(message),
-                PdfFileContent.from(base64, "application/pdf"));
-        return chatModel.chat(userMessage).aiMessage().text();
-    }
-
     private static String readBase64(String classpathLocation) {
         try {
             byte[] bytes = new ClassPathResource(classpathLocation).getInputStream().readAllBytes();
@@ -33,5 +25,13 @@ public class FileReadService {
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to read file: " + classpathLocation, e);
         }
+    }
+
+    public String readFile(String fileName, String message) {
+        String base64 = readBase64("files/" + fileName);
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from(message),
+                PdfFileContent.from(base64, "application/pdf"));
+        return chatModel.chat(userMessage).aiMessage().text();
     }
 }

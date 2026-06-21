@@ -18,7 +18,7 @@ class AIConfig {
 
     @Bean
     ChatModel chatModel(@Value("${OPENAI_API_KEY:sk-placeholder}") String apiKey,
-                       @Value("${app.chat.model:gpt-4o-mini}") String modelName) {
+                        @Value("${app.chat.model:gpt-4o-mini}") String modelName) {
         return OpenAiChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
@@ -27,7 +27,7 @@ class AIConfig {
 
     @Bean
     ImageModel imageModel(@Value("${OPENAI_API_KEY:sk-placeholder}") String apiKey,
-                         @Value("${app.image.model:dall-e-3}") String modelName) {
+                          @Value("${app.image.model:dall-e-3}") String modelName) {
         return OpenAiImageModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)

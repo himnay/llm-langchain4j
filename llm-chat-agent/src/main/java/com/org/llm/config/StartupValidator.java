@@ -23,6 +23,10 @@ public class StartupValidator implements ApplicationRunner {
         this.authEnabled = authEnabled;
     }
 
+    private static boolean isMissing(String value) {
+        return value == null || value.isBlank() || value.startsWith("sk-placeholder") || value.startsWith("${");
+    }
+
     @Override
     public void run(ApplicationArguments args) {
         if (isMissing(openAiApiKey)) {
@@ -31,9 +35,5 @@ public class StartupValidator implements ApplicationRunner {
         if (!authEnabled) {
             log.warn("CONFIG | API-key authentication is DISABLED — every endpoint is open. Do not run this way in production.");
         }
-    }
-
-    private static boolean isMissing(String value) {
-        return value == null || value.isBlank() || value.startsWith("sk-placeholder") || value.startsWith("${");
     }
 }

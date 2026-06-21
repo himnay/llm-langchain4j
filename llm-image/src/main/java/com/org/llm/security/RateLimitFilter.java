@@ -74,7 +74,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 new Bucket(cfg.getCapacity(), cfg.getRefillPerMinute() / 60.0));
     }
 
-    /** Simple continuous-refill token bucket. */
+    /**
+     * Simple continuous-refill token bucket.
+     */
     private static final class Bucket {
         private final double capacity;
         private final double refillPerSecond;

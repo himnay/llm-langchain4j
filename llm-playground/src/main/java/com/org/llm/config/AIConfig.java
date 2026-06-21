@@ -17,7 +17,7 @@ class AIConfig {
 
     @Bean
     ChatModel chatModel(@Value("${OPENAI_API_KEY:sk-placeholder}") String apiKey,
-                       @Value("${app.chat.model:gpt-4o-mini}") String modelName) {
+                        @Value("${app.chat.model:gpt-4o-mini}") String modelName) {
         return OpenAiChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)

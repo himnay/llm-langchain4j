@@ -21,7 +21,9 @@ public class VoiceChatService {
     private final ChatAgentClient chatAgentClient;
     private final AudioValidator audioValidator;
 
-    /** Transcript of the uploaded audio plus the model's reply to it. */
+    /**
+     * Transcript of the uploaded audio plus the model's reply to it.
+     */
     public record VoiceExchange(String transcript, String aiResponse) {
     }
 

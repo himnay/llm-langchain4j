@@ -38,6 +38,20 @@ public class LocalChatBackend implements ChatBackend {
     private final RagFilterContext ragFilterContext;
     private final RetrievedContentContext retrievedContentContext;
 
+    /**
+     * Scopes retrieval to one document (matched by its {@code fileName} metadata) when requested.
+     */
+    private static Filter documentFilter(String documentSource) {
+        if (documentSource == null || documentSource.isBlank()) {
+            return null;
+        }
+        return MetadataFilterBuilder.metadataKey("fileName").isEqualTo(documentSource);
+    }
+
+    private static List<Citation> toCitations(List<Content> retrieved) {
+        return retrieved.stream().map(Citation::from).toList();
+    }
+
     @Override
     public ChatAnswer chat(String systemPrompt, String conversationId, String message, String documentSource) {
         ragFilterContext.set(documentFilter(documentSource));
@@ -74,20 +88,8 @@ public class LocalChatBackend implements ChatBackend {
                 });
     }
 
-    /** Scopes retrieval to one document (matched by its {@code fileName} metadata) when requested. */
-    private static Filter documentFilter(String documentSource) {
-        if (documentSource == null || documentSource.isBlank()) {
-            return null;
-        }
-        return MetadataFilterBuilder.metadataKey("fileName").isEqualTo(documentSource);
-    }
-
-    private static List<Citation> toCitations(List<Content> retrieved) {
-        return retrieved.stream().map(Citation::from).toList();
-    }
-
     private Boolean evaluateFaithfulness(String question, List<Content> documents, String answer,
-                                          List<Citation> citations) {
+                                         List<Citation> citations) {
         if (!ragProperties.isEvaluateFaithfulness() || citations.isEmpty() || answer == null) {
             return null;
         }

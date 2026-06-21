@@ -8,7 +8,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/** Generates several paraphrased variants of the query to improve recall on ambiguous questions. */
+/**
+ * Generates several paraphrased variants of the query to improve recall on ambiguous questions.
+ */
 @Component
 @RequiredArgsConstructor
 class MultiQueryExpansionStrategy implements QueryTransformationStrategy {

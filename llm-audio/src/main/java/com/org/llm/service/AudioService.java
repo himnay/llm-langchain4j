@@ -27,7 +27,9 @@ public class AudioService {
     private static final Path AUDIO_DIR = Path.of(System.getProperty("java.io.tmpdir"), "langchain4j-audio");
 
     private final AudioTranscriptionModel transcriptionModel;
-    /** LangChain4j has no text-to-speech abstraction — used only for {@link #textToSpeech}. */
+    /**
+     * LangChain4j has no text-to-speech abstraction — used only for {@link #textToSpeech}.
+     */
     private final OpenAIClient openAiClient;
 
     public StoredAudio store(MultipartFile file) {

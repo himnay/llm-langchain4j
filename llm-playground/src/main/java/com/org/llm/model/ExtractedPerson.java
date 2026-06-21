@@ -4,7 +4,9 @@ import dev.langchain4j.model.output.structured.Description;
 
 import java.util.List;
 
-/** Structured extraction target — nested records/lists are derived into the JSON schema too. */
+/**
+ * Structured extraction target — nested records/lists are derived into the JSON schema too.
+ */
 public record ExtractedPerson(
         @Description("the person's full name") String name,
         @Description("the person's age in years, or null if not mentioned") Integer age,

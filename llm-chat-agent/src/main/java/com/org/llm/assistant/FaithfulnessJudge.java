@@ -14,13 +14,13 @@ public interface FaithfulnessJudge {
             You are verifying whether an AI-generated ANSWER is fully supported by the CONTEXT.
             Set pass=true only if every claim in the ANSWER is entailed by the CONTEXT; otherwise
             set pass=false and explain which claim is unsupported.
-
+            
             CONTEXT:
             {{context}}
-
+            
             QUESTION:
             {{question}}
-
+            
             ANSWER:
             {{answer}}
             """)

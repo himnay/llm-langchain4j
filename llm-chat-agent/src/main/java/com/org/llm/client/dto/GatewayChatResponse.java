@@ -14,7 +14,9 @@ public record GatewayChatResponse(
         String model,
         String error) {
 
-    /** The assistant text, tolerating either the {@code content} or {@code response} field. */
+    /**
+     * The assistant text, tolerating either the {@code content} or {@code response} field.
+     */
     public String text() {
         return content != null ? content : response;
     }

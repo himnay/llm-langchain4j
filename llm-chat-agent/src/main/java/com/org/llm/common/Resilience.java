@@ -8,5 +8,6 @@ package com.org.llm.common;
 @Deprecated(since = "2.0", forRemoval = true)
 public final class Resilience {
 
-    private Resilience() {}
+    private Resilience() {
+    }
 }

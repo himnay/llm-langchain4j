@@ -21,13 +21,26 @@ import java.util.Map;
 @ConditionalOnProperty(prefix = "app.gateway", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class GatewayTravelPlanBackend implements TravelPlanBackend {
 
-    /** JSON shape requested from the gateway so the free-form completion can be deserialized. */
+    /**
+     * JSON shape requested from the gateway so the free-form completion can be deserialized.
+     */
     private static final String JSON_INSTRUCTION = """
             Respond with ONLY valid JSON (no markdown, no prose) matching exactly:
             {"city": string, "days": number, "itinerary": [{"day": number, "activities": string, "food": string, "budget": number}]}""";
 
     private final GatewayClient gatewayClient;
     private final ObjectMapper objectMapper;
+
+    /**
+     * Defensive: strip ```json fences if a model wraps the JSON despite instructions.
+     */
+    private static String stripFences(String text) {
+        String cleaned = text == null ? "" : text.trim();
+        if (cleaned.startsWith("```")) {
+            cleaned = cleaned.replaceFirst("(?s)^```(?:json)?", "").replaceFirst("(?s)```$", "").trim();
+        }
+        return cleaned;
+    }
 
     @Override
     public TravelPlan plan(PromptTemplate template, Map<String, Object> variables) {
@@ -44,14 +57,5 @@ public class GatewayTravelPlanBackend implements TravelPlanBackend {
             throw new IllegalStateException("Gateway returned a travel plan that could not be parsed: "
                     + ex.getMessage());
         }
-    }
-
-    /** Defensive: strip ```json fences if a model wraps the JSON despite instructions. */
-    private static String stripFences(String text) {
-        String cleaned = text == null ? "" : text.trim();
-        if (cleaned.startsWith("```")) {
-            cleaned = cleaned.replaceFirst("(?s)^```(?:json)?", "").replaceFirst("(?s)```$", "").trim();
-        }
-        return cleaned;
     }
 }

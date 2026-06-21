@@ -7,9 +7,9 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 /**
- * @param history alternating prior turns, oldest first, starting with the user
- *                 (e.g. {@code ["What is the capital of Denmark?", "Copenhagen."]}) — only
- *                 read by {@link QueryTransformationTechnique#COMPRESS}
+ * @param history        alternating prior turns, oldest first, starting with the user
+ *                       (e.g. {@code ["What is the capital of Denmark?", "Copenhagen."]}) — only
+ *                       read by {@link QueryTransformationTechnique#COMPRESS}
  * @param targetLanguage only read by {@link QueryTransformationTechnique#TRANSLATE}; defaults to English
  */
 public record QueryTransformRequest(

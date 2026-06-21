@@ -37,7 +37,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    /** Open routes: actuator, the demo static UIs, Swagger/OpenAPI docs and infrastructure endpoints. */
+    /**
+     * Open routes: actuator, the demo static UIs, Swagger/OpenAPI docs and infrastructure endpoints.
+     */
     private static final String[] PUBLIC_PATHS = {
             "/actuator/**", "/error", "/favicon.ico",
             "/", "/index.html", "/*.html",

@@ -24,7 +24,9 @@ public class SqlValidator {
     private static final Pattern LIMIT_PATTERN = Pattern.compile("(?i)\\blimit\\s+\\d+");
     private static final Pattern COUNT_PATTERN = Pattern.compile("(?i)^\\s*select\\s+count\\s*\\(");
 
-    /** Full guard pipeline: strip fences/semicolons, enforce read-only allow-listed SQL, cap rows. */
+    /**
+     * Full guard pipeline: strip fences/semicolons, enforce read-only allow-listed SQL, cap rows.
+     */
     public String prepare(String rawSql, int maxRows) {
         return enforceLimit(validateReadOnly(sanitize(rawSql)), maxRows);
     }
