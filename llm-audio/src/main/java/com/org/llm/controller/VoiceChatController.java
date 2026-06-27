@@ -19,10 +19,10 @@ import java.util.Map;
  * reply back to audio. Previously lived on {@code llm-chat}'s {@code ChatController} before the
  * chat/audio split.
  */
-@RestController
-@RequiredArgsConstructor
-@RequestMapping("/api/v1/chat")
 @Tag(name = "Voice Chat", description = "Voice-to-voice and voice-to-text chat endpoints")
+@RestController
+@RequestMapping("/api/v1/chat")
+@RequiredArgsConstructor
 class VoiceChatController {
 
     private final VoiceChatService voiceChatService;

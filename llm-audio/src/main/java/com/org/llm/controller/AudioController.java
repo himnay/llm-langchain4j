@@ -17,11 +17,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
+@Tag(name = "Audio", description = "Audio upload, transcription and text-to-speech endpoints")
 @Validated
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/api/v1/audio")
-@Tag(name = "Audio", description = "Audio upload, transcription and text-to-speech endpoints")
+@RequiredArgsConstructor
 class AudioController {
 
     private final AudioService audioService;

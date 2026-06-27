@@ -9,7 +9,7 @@ import dev.langchain4j.service.V;
  */
 public interface SummarizerAssistant {
 
-    @SystemMessage("You are a concise summarizer. Summarize the user's text in at most {{maxSentences}} sentences.")
     @UserMessage("{{text}}")
+    @SystemMessage("You are a concise summarizer. Summarize the user's text in at most {{maxSentences}} sentences.")
     String summarize(@V("text") String text, @V("maxSentences") int maxSentences);
 }

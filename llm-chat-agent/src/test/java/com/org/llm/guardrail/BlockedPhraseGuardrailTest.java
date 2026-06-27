@@ -15,8 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class BlockedPhraseGuardrailTest {
 
-    @DisplayName("Blocks a message containing a default forbidden phrase")
     @Test
+    @DisplayName("Blocks a message containing a default forbidden phrase")
     void blocksDefaultForbiddenPhrase() {
         BlockedPhraseGuardrail guardrail = new BlockedPhraseGuardrail("");
 
@@ -25,8 +25,8 @@ class BlockedPhraseGuardrailTest {
         assertThat(result.isSuccess()).isFalse();
     }
 
-    @DisplayName("Blocks a message containing a configured extra forbidden phrase")
     @Test
+    @DisplayName("Blocks a message containing a configured extra forbidden phrase")
     void blocksConfiguredExtraPhrase() {
         BlockedPhraseGuardrail guardrail = new BlockedPhraseGuardrail("do not say this");
 
@@ -35,8 +35,8 @@ class BlockedPhraseGuardrailTest {
         assertThat(result.isSuccess()).isFalse();
     }
 
-    @DisplayName("Allows an ordinary message through")
     @Test
+    @DisplayName("Allows an ordinary message through")
     void allowsOrdinaryMessage() {
         BlockedPhraseGuardrail guardrail = new BlockedPhraseGuardrail("");
 

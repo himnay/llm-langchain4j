@@ -29,12 +29,12 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 import java.util.Map;
 
+@Tag(name = "Chat", description = "Conversational AI chat endpoints")
 @Slf4j
 @Validated
 @RestController
 @RequestMapping("/api/v1/chat")
 @RequiredArgsConstructor
-@Tag(name = "Chat", description = "Conversational AI chat endpoints")
 class ChatController {
 
     private final ChatService chatService;
@@ -101,8 +101,8 @@ class ChatController {
 
     @Operation(summary = "Stream a chat response as Server-Sent Events: 'token' events with answer "
             + "text, followed by one trailing 'citations' event with the RAG sources used (JSON array)")
-    @CircuitBreaker(name = "llm-chat", fallbackMethod = "streamFallback")
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @CircuitBreaker(name = "llm-chat", fallbackMethod = "streamFallback")
     public Flux<ServerSentEvent<String>> streamChat(@Validated @RequestBody ChatRequest chatRequest) {
         return chatService.streamChat(chatRequest.getConversationId(), chatRequest.getMessage(), chatRequest.getDocumentSource());
     }

@@ -11,11 +11,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Recipe", description = "AI-generated recipe creation endpoints")
 @Validated
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/api/v1/recipe")
-@Tag(name = "Recipe", description = "AI-generated recipe creation endpoints")
+@RequiredArgsConstructor
 class RecipeController {
 
     private final RecipeService recipeService;

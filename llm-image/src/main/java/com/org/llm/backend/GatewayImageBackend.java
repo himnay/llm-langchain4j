@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "app.gateway", name = "enabled", havingValue = "true", matchIfMissing = true)
+@RequiredArgsConstructor
 public class GatewayImageBackend implements ImageBackend {
 
     private final GatewayClient gatewayClient;

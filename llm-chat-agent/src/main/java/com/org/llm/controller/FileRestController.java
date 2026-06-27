@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
-@RequiredArgsConstructor
-@RequestMapping("/api/v1/files")
 @Tag(name = "Files", description = "File reading and AI-assisted document Q&A endpoints")
+@RestController
+@RequestMapping("/api/v1/files")
+@RequiredArgsConstructor
 class FileRestController {
 
     private final FileReadService fileReadService;

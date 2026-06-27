@@ -16,10 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
  * Validation and {@code SqlValidationException} failures are translated to 400 JSON by
  * {@link com.org.llm.exception.GlobalExceptionHandler}.
  */
-@RestController
-@RequiredArgsConstructor
-@RequestMapping("/api/v1/sql")
 @Tag(name = "Text-to-SQL", description = "Natural language to SQL translation endpoints")
+@RestController
+@RequestMapping("/api/v1/sql")
+@RequiredArgsConstructor
 class TextToSqlController {
 
     private final TextToSqlService textToSqlService;

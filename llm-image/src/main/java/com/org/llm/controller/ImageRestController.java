@@ -13,11 +13,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Images", description = "Image captioning and AI image generation endpoints")
 @Validated
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/api/v1/images")
-@Tag(name = "Images", description = "Image captioning and AI image generation endpoints")
+@RequiredArgsConstructor
 class ImageRestController {
 
     private final ImageCaptionService imageCaptionService;
