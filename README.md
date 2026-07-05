@@ -23,6 +23,91 @@ the original Spring AI project for infra continuity, not a library reference).
 > [`llm-rag-pipeline`](../llm-rag-pipeline) (ingestion + retrieval). This repo follows the same
 > security, observability and project conventions as those two.
 
+## 🗺️ Component Architecture
+
+Each module is an independently deployable Spring Boot process (own port, own `application.yml`,
+own Postgres database); nothing is shared at runtime except the Postgres instance and Redis
+instance sitting in `docker-compose.yml`. Arrows below are runtime calls, not compile-time
+dependencies — the four modules never appear on one another's classpath.
+
+```mermaid
+flowchart TB
+    Client(["Client / curl / static demo HTML"])
+
+    subgraph ChatAgent["llm-chat-agent : 8082"]
+        direction TB
+        CA_Ctrl["Controllers<br/>Chat · Recipe · Files · Text-to-SQL · RAG query-transform"]
+        CA_Svc["Services<br/>ChatService · TravelGuideService · TextToSqlService"]
+        CA_Backend["Backend strategy<br/>Local*Backend / Gateway*Backend"]
+        CA_AiServices["AiServices proxies<br/>ChatAssistant · TravelPlanAssistant · FaithfulnessJudge"]
+        CA_Rag["RAG pipeline<br/>QueryTransformer → ContentRetriever → Aggregator → Injector"]
+        CA_Mem["JdbcChatMemoryStore"]
+        CA_Ctrl --> CA_Svc --> CA_Backend --> CA_AiServices
+        CA_AiServices --> CA_Rag
+        CA_AiServices --> CA_Mem
+    end
+
+    subgraph Audio["llm-audio : 8083"]
+        direction TB
+        Au_Ctrl["AudioController · VoiceChatController"]
+        Au_Svc["AudioService · VoiceChatService"]
+        Au_Client["ChatAgentClient (WebClient)"]
+        Au_Ctrl --> Au_Svc --> Au_Client
+    end
+
+    subgraph Image["llm-image : 8084"]
+        direction TB
+        Im_Ctrl["ImageRestController"]
+        Im_Svc["ImageCaptionService"]
+        Im_Backend["ImageBackend strategy<br/>Local*/Gateway*"]
+        Im_Ctrl --> Im_Svc
+        Im_Ctrl --> Im_Backend
+    end
+
+    subgraph Playground["llm-playground : 8085 (no DB, no auth)"]
+        direction TB
+        Pg_Ctrl["PlaygroundController"]
+        Pg_Ai["ClassifierAssistant · ExtractionAssistant ·<br/>SummarizerAssistant · ModerationService"]
+        Pg_Ctrl --> Pg_Ai
+    end
+
+    Gateway[["llm-gateway : 8080<br/>(sibling repo, plain WebClient, no LangChain4j)"]]
+    OpenAI[("OpenAI API<br/>chat · embeddings · moderation · Whisper · Dall-E · TTS")]
+    Postgres[("PostgreSQL 18<br/>spring_ai / spring_ai_audio / spring_ai_image")]
+    Redis[("Redis<br/>RedisEmbeddingStore (RAG vectors)")]
+    Obs[["Prometheus · Grafana · Tempo · Loki"]]
+
+    Client --> CA_Ctrl
+    Client --> Au_Ctrl
+    Client --> Im_Ctrl
+    Client --> Pg_Ctrl
+
+    Au_Client -- "HTTP POST /api/v1/chat" --> CA_Ctrl
+
+    CA_Backend -- "app.gateway.enabled=true" --> Gateway
+    Im_Backend -- "app.gateway.enabled=true" --> Gateway
+    CA_AiServices -- "app.gateway.enabled=false (direct)" --> OpenAI
+    Im_Backend -- "direct Dall-E" --> OpenAI
+    Au_Svc -- "Whisper + TTS" --> OpenAI
+    Pg_Ai -- "chat/moderation" --> OpenAI
+    Gateway --> OpenAI
+
+    CA_Mem --> Postgres
+    CA_Rag --> Redis
+    Im_Svc --> Postgres
+    Au_Svc --> Postgres
+
+    ChatAgent -. metrics/traces/logs .-> Obs
+    Audio -. metrics/traces/logs .-> Obs
+    Image -. metrics/traces/logs .-> Obs
+```
+
+Notable asymmetries visible in the diagram: `llm-playground` is the only module with no arrow
+into Postgres (no persistence, no auth); `llm-audio` reaches `llm-chat-agent` over plain HTTP
+rather than duplicating chat logic; and both `llm-chat-agent` and `llm-image` fork at their
+`Backend` strategy layer between the gateway path and the direct-OpenAI-via-LangChain4j path,
+selected by `app.gateway.enabled` at startup — never per-request.
+
 ## 🛠️ Technology Stack
 
 - **Spring Boot** 4.1.0 · **LangChain4j** 1.16.3 · **Java** 25 · **Maven**
@@ -205,6 +290,97 @@ TokenStream chatStream(
     @UserMessage String message
 );
 ```
+
+### Sequence — resolving `ChatAssistant.chat(...)` to an actual model call
+
+The diagram below traces one `POST /api/v1/chat` request end to end through every collaborator
+`AIConfig` wired onto the `ChatAssistant` proxy at startup — guardrail, memory, RAG retrieval
+augmentor, tool loop, and moderation — grounded in the real classes
+(`LocalChatBackend`, `BlockedPhraseGuardrail`, `JdbcChatMemoryStore`, `RagConfig`'s
+`RetrievalAugmentor`, `WeatherTools`, `OpenAiModerationModel`). This is the concrete answer to
+"how does a plain Java interface method turn into an LLM call": the interface itself contains no
+logic at all — every step below happens inside the dynamic proxy `AiServices.builder(...).build()`
+generates, driven purely by the annotations on the interface and the builder calls in `AIConfig`.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant Ctrl as ChatController
+    participant Svc as ChatService
+    participant BE as LocalChatBackend
+    participant Proxy as ChatAssistant (AiServices dynamic proxy)
+    participant Guard as BlockedPhraseGuardrail (InputGuardrail)
+    participant Mem as ChatMemoryProvider / JdbcChatMemoryStore (Postgres)
+    participant RAG as RetrievalAugmentor (Transform-Retrieve-Aggregate-Inject)
+    participant Redis as RedisEmbeddingStore
+    participant LLM as OpenAiChatModel (OpenAI Chat Completions)
+    participant Tool as WeatherTools / ContactsTool (Tool methods)
+    participant Mod as OpenAiModerationModel (Moderate)
+
+    C->>Ctrl: POST /api/v1/chat {conversationId, message, documentSource}
+    Ctrl->>Svc: chat(conversationId, message, documentSource)
+    Svc->>BE: chat(systemPrompt, conversationId, message, documentSource)
+    BE->>BE: ragFilterContext.set(MetadataFilterBuilder on fileName)
+    BE->>Proxy: chat(conversationId, systemPrompt, message)
+
+    Note over Proxy: Everything below runs inside the proxy method AiServices generated from the interface + AIConfig wiring
+
+    Proxy->>Guard: validate(userMessage)
+    alt pattern matched
+        Guard-->>Proxy: failure(blockMessage)
+        Proxy-->>BE: throws / short-circuits — model never called
+    else clean input
+        Guard-->>Proxy: success()
+        Proxy->>Mem: getMessages(conversationId)
+        Mem-->>Proxy: prior MessageWindowChatMemory (≤ 50 msgs)
+        Proxy->>RAG: augment(userMessage, chatMemory)
+        RAG->>RAG: CompressThenExpandQueryTransformer(query, history)
+        RAG->>Redis: similaritySearch(embedding, dynamicFilter)
+        Redis-->>RAG: top-5 TextSegments + metadata
+        RAG->>RAG: DefaultContentAggregator → DefaultContentInjector
+        RAG-->>Proxy: augmented UserMessage (context injected)
+        Proxy->>LLM: chat(systemMessage + history + augmented message, toolSpecs)
+        opt model requests a tool call
+            LLM-->>Proxy: ToolExecutionRequest(getWeather, {city, date})
+            Proxy->>Tool: getWeather(city, date)
+            Tool-->>Proxy: WeatherResult
+            Proxy->>LLM: chat(... + ToolExecutionResultMessage)
+        end
+        LLM-->>Proxy: AiMessage(answer text)
+        Proxy->>Mod: moderate(answer text)
+        alt flagged
+            Mod-->>Proxy: Moderation(flagged=true)
+            Proxy-->>BE: throws ModerationException
+        else clean output
+            Mod-->>Proxy: Moderation(flagged=false)
+            Proxy->>Mem: updateMessages(conversationId, newMessages)
+            Mem-->>Proxy: persisted
+            Proxy-->>BE: String answer
+        end
+    end
+    BE->>BE: read RetrievedContentContext → build List<Citation>
+    BE->>BE: ragFilterContext.clear()
+    BE-->>Svc: ChatAnswer(answer, citations, faithful)
+    Svc-->>Ctrl: ChatAnswer
+    Ctrl-->>C: 200 OK JSON
+```
+
+Two details this sequence makes concrete:
+
+- **The guardrail, memory lookup, RAG augmentation, tool loop, and moderation are not application
+  code the developer calls explicitly** — they are cross-cutting behavior `AiServices` weaves
+  around the single-line interface method, configured once via builder calls in `AIConfig`
+  (`.inputGuardrails(...)`, `.chatMemoryProvider(...)`, `.retrievalAugmentor(...)`,
+  `.tools(...)`, `.moderationModel(...)`). Compare this to Spring AI, where the equivalent chain
+  (`SafeGuardAdvisor`, `MessageChatMemoryAdvisor`, `RetrievalAugmentationAdvisor`, `.tools(...)`)
+  is assembled explicitly on every `ChatClient.prompt()` call in `LocalChatBackend`'s Spring AI
+  predecessor.
+- **The tool-calling loop is a second round-trip to the model, not a callback the framework
+  hides from OpenAI.** When `getWeather` fires, `AiServices` executes the annotated Java method
+  locally, then sends the result back to OpenAI as a `ToolExecutionResultMessage` in a follow-up
+  chat-completion call — the model only ever "sees" a function's return value in its next turn,
+  it does not execute anything itself.
 
 ---
 
