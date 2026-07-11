@@ -1,5 +1,23 @@
 # LLM LangChain4j — A LangChain4j Learning Backend
 
+<img src="image/langchain4j-logo.png" alt="logo" width="80"/>
+
+## Table of contents
+
+1. [🗺️ Component Architecture](#-component-architecture)
+2. [🛠️ Technology Stack](#-technology-stack)
+3. [🏗️ Layout](#-layout)
+4. [🚀 Getting Started](#-getting-started)
+5. [🔑 Authentication](#-authentication)
+6. [Prompt Injection Security](#prompt-injection-security)
+7. [Architecture — AiServices Proxy Pattern](#architecture--aiservices-proxy-pattern)
+8. [🔀 Routing through llm-gateway](#-routing-through-llm-gateway)
+9. [📡 Endpoints](#-endpoints)
+10. [📊 Observability](#-observability)
+11. [🧱 Configuration](#-configuration)
+12. [✅ Build & Test](#-build--test)
+13. [Technology Deep Dive](#technology-deep-dive)
+
 A Maven **multi-module** reactor ported from a sibling project (`llm-chat`) that used Spring AI
 end-to-end. Every Spring AI integration has been replaced with **LangChain4j 1.16.3** — the goal
 of this repo is to learn LangChain4j's real capabilities by rebuilding a working backend on top of
