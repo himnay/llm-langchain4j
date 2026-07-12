@@ -9,14 +9,14 @@
 3. [🏗️ Layout](#-layout)
 4. [🚀 Getting Started](#-getting-started)
 5. [🔑 Authentication](#-authentication)
-6. [Prompt Injection Security](#prompt-injection-security)
-7. [Architecture — AiServices Proxy Pattern](#architecture--aiservices-proxy-pattern)
+6. 🔐 [Prompt Injection Security](#prompt-injection-security)
+7. 🚪 [Architecture — AiServices Proxy Pattern](#architecture--aiservices-proxy-pattern)
 8. [🔀 Routing through llm-gateway](#-routing-through-llm-gateway)
 9. [📡 Endpoints](#-endpoints)
 10. [📊 Observability](#-observability)
 11. [🧱 Configuration](#-configuration)
 12. [✅ Build & Test](#-build--test)
-13. [Technology Deep Dive](#technology-deep-dive)
+13. 🧰 [Technology Deep Dive](#technology-deep-dive)
 
 A Maven **multi-module** reactor ported from a sibling project (`llm-chat`) that used Spring AI
 end-to-end. Every Spring AI integration has been replaced with **LangChain4j 1.16.3** — the goal
