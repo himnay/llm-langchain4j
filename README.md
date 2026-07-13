@@ -128,6 +128,8 @@ selected by `app.gateway.enabled` at startup — never per-request.
 
 ## 🛠️ Technology Stack
 
+<ul>
+
 - **Spring Boot** 4.1.0 · **LangChain4j** 1.16.3 · **Java** 25 · **Maven**
 - **OpenAI** (chat, embeddings, moderation, audio transcription, image generation) · the official
   **OpenAI Java SDK** directly for text-to-speech (LangChain4j has no TTS abstraction)
@@ -136,10 +138,14 @@ selected by `app.gateway.enabled` at startup — never per-request.
 - **Spring Security** — API-key authentication (`X-API-Key`) + in-memory rate limiting
 - **Observability**: Micrometer + Prometheus + Grafana + Tempo (traces) + Loki (logs)
 
+</ul>
+
 ## 🏗️ Layout
 
 Each module is a self-contained Spring Boot app under `com.org.llm.*`; the package name repeats
 across modules but they never share a classpath at runtime.
+
+<ul>
 
 - **`llm-chat-agent/`** — `controller/` (chat, file, recipe, text-to-sql, RAG query-transform
   playground), `service/` (`ChatService`, `TravelGuideService`, `TextToSqlService`,
@@ -164,6 +170,8 @@ across modules but they never share a classpath at runtime.
   shared library): `security/` (`ApiKeyService`, `ApiKeyAuthFilter`, `RateLimitFilter`,
   `SecurityConfig`, `RestAuthenticationEntryPoint`), `exception/` (`GlobalExceptionHandler` +
   `ApiError`), `web/RequestIdFilter`, `config/ObservabilityConfig` + `AsyncConfig`.
+
+</ul>
 
 ## 🚀 Getting Started
 
@@ -197,6 +205,8 @@ path **`/ai`** on its own port (e.g. http://localhost:8082/ai).
 
 ## 🔑 Authentication
 
+<ul>
+
 - API-key auth is **enabled by default** in `llm-chat-agent`, `llm-audio`, and `llm-image` — each
   request must include `X-API-Key` (`llm-playground` has no auth/persistence layer at all)
 - Excluded from auth: actuator endpoints, the demo static HTML pages, and `/error`
@@ -204,6 +214,8 @@ path **`/ai`** on its own port (e.g. http://localhost:8082/ai).
   databases — `spring_ai`, `spring_ai_audio`, `spring_ai_image` — so a key minted for one module
   doesn't work on another) — raw values are never persisted
 - Flyway seeds a **development key** per module, ready to use immediately:
+
+</ul>
 
 ```
 llm-chat-agent: X-API-Key: llm-chat-dev-key-2026
@@ -226,8 +238,12 @@ psql -h localhost -U postgres -d spring_ai \
 echo "X-API-Key: $raw"
 ```
 
+<ul>
+
 - To disable auth for local development: set `API_AUTH_ENABLED=false` (or `app.security.auth-enabled=false`)
 - The demo HTML UIs under `/ai/*.html` assume an open instance or that you inject the dev key directly
+
+</ul>
 
 ## Prompt Injection Security
 
@@ -386,6 +402,8 @@ sequenceDiagram
 
 Two details this sequence makes concrete:
 
+<ul>
+
 - **The guardrail, memory lookup, RAG augmentation, tool loop, and moderation are not application
   code the developer calls explicitly** — they are cross-cutting behavior `AiServices` weaves
   around the single-line interface method, configured once via builder calls in `AIConfig`
@@ -400,9 +418,13 @@ Two details this sequence makes concrete:
   chat-completion call — the model only ever "sees" a function's return value in its next turn,
   it does not execute anything itself.
 
+</ul>
+
 ---
 
 ## 🔀 Routing through llm-gateway
+
+<ul>
 
 - By default (`app.gateway.enabled=true`), `llm-chat-agent`'s chat/structured travel-guide and
   `llm-image`'s image generation are **routed through `llm-gateway`** rather than calling
@@ -414,6 +436,8 @@ Two details this sequence makes concrete:
 - `llm-image`'s captioning, `llm-audio`'s transcription/TTS, and `llm-chat-agent`'s file reading **always run locally
   ** — the gateway exposes no such endpoints
 
+</ul>
+
 | Flow                                  | Gateway call                                   |
 |---------------------------------------|------------------------------------------------|
 | `llm-chat-agent` `/chat`              | `POST /llm/chat` (session = `conversationId`)  |
@@ -421,10 +445,14 @@ Two details this sequence makes concrete:
 | `llm-chat-agent` `/chat/travel-guide` | `POST /llm/query` (strict-JSON → `TravelPlan`) |
 | `llm-image` `/images/generate`        | `POST /llm/image` (OpenAI DALL·E)              |
 
+<ul>
+
 - Configure via `app.gateway.*` env vars: `GATEWAY_ENABLED`, `GATEWAY_BASE_URL`, `GATEWAY_API_KEY`, `GATEWAY_PROVIDER`,
   `GATEWAY_MODEL` (`llm-image` also has `GATEWAY_IMAGE_MODEL`)
 - Recommended run order for the full stack: `llm-gateway` (8080) → `llm-chat-agent` (8082) → `llm-audio` (8083) /
   `llm-image` (8084)
+
+</ul>
 
 ## 📡 Endpoints
 
@@ -483,22 +511,32 @@ http://localhost:3000 (admin/admin) with the auto-provisioned **LLM Chat** dashb
 | `/ai/actuator/metrics`    | Micrometer metrics                                                                 |
 | `/ai/actuator/prometheus` | Prometheus scrape target                                                           |
 
+<ul>
+
 - `/actuator/info` is enriched at build time by `spring-boot-maven-plugin` (`build-info` goal) and
   `git-commit-id-maven-plugin`
 - Run `./mvnw package` to populate build timestamp, version, and Git commit details into the info endpoint
 
+</ul>
+
 ## 🧱 Configuration
+
+<ul>
 
 - All tunables live in `application.yml` and accept environment variable overrides at runtime
 - Key environment variables: `SERVER_PORT`, `POSTGRES_*`, `REDIS_*`, `API_AUTH_ENABLED`, `RATE_LIMIT_ENABLED`,
   `CORS_ALLOWED_ORIGINS`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `CHAT_MODEL`, `EMBEDDING_MODEL`, `IMAGE_MODEL`
 - No rebuild required — all knobs are externalised and take effect on the next startup
 
+</ul>
+
 ## ✅ Build & Test
 
 ```bash
 ./mvnw verify        # compile, test, JaCoCo coverage report (target/site/jacoco)
 ```
+
+<ul>
 
 - Integration tests use **Testcontainers** (`TestcontainersConfiguration` + `@ServiceConnection`)
 - A throwaway `postgres:18` container is started per test run — no locally provisioned database needed, only Docker
@@ -508,6 +546,8 @@ http://localhost:3000 (admin/admin) with the auto-provisioned **LLM Chat** dashb
 - Flyway migrations and all JDBC queries in tests run against the real Postgres 18 container
 - Validator logic (`SqlValidator`, `AudioValidator`) and the new `BlockedPhraseGuardrail` are covered by plain unit
   tests with no container dependency
+
+</ul>
 
 ## Technology Deep Dive
 
@@ -520,13 +560,19 @@ project — what it is and exactly how it is wired up here.
 
 **What it is.**
 
+<ul>
+
 - Spring Boot is an opinionated framework that auto-configures a production-ready Java application from a single `main`
   class and a classpath of starter JARs
 - Version 4.x requires Java 17+ and brings the `jakarta.*` namespace (Jakarta EE 11); this project runs on Java 25
 - Auto-configuration is now further modularised — each technology ships its own auto-config module rather than bundling
   everything in one jar
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - Entry point is `LLMApplication`; `spring-boot-starter-web` stands up a Tomcat servlet container on port 8082 under
   context path `/ai`
@@ -539,11 +585,15 @@ project — what it is and exactly how it is wired up here.
   bean is a plain `@Bean` method in a `@Configuration` class (`AIConfig`, `RagConfig`); Spring's only role is dependency
   wiring and lifecycle, same as it would be for any other library
 
+</ul>
+
 ---
 
 ### LangChain4j 1.16.3
 
 **What it is.**
+
+<ul>
 
 - LangChain4j is a Java library for building LLM-powered applications: model abstractions
   (`ChatModel`, `StreamingChatModel`, `EmbeddingModel`, `ImageModel`, `AudioTranscriptionModel`,
@@ -556,7 +606,11 @@ project — what it is and exactly how it is wired up here.
   that BOM; only the **community** modules (`langchain4j-community-redis`) sit on their own
   separate beta version track and need an explicit version
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - **`AiServices`** (built in `AIConfig`) replaces Spring AI's `ChatClient` + advisor chain: a
   single `ChatAssistant` interface is built once with `.chatModel()`, `.streamingChatModel()`,
@@ -609,6 +663,8 @@ project — what it is and exactly how it is wired up here.
   into a JSON schema and parses the model's reply into it automatically, the same role Spring AI's
   `.call().entity(TravelPlan.class)` played
 
+</ul>
+
 **Why an `AiServices` instance is built once, not per call**
 
 Spring AI's `ChatClient` is a flexible builder you reconfigure on every `.prompt()` call —
@@ -625,12 +681,16 @@ Spring AI's `ChatClientResponse.context()` exposed whatever the `RetrievalAugmen
 retrieved for that specific call. LangChain4j's plain `String chat(...)` method on an `AiServices`
 interface returns no such wrapper, so two different mechanisms cover the two call shapes:
 
+<ul>
+
 - **Non-streaming** (`ChatAssistant.chat()`): `CapturingContentRetriever` (a `ContentRetriever`
   decorator wrapping the real `EmbeddingStoreContentRetriever`) writes every retrieval's results
   into `RetrievedContentContext`, a `ThreadLocal` `LocalChatBackend` reads right after the call —
   safe because retrieval happens synchronously on the calling thread before the method returns.
 - **Streaming** (`ChatAssistant.chatStream()`): `TokenStream#onRetrieved(Consumer<List<Content>>)`
   hands back exactly what was retrieved as a native callback — no `ThreadLocal` needed here at all.
+
+</ul>
 
 **Per-request document filtering (`MetadataFilterBuilder`)**
 
@@ -723,11 +783,17 @@ wires `CompressingQueryTransformer` and `ExpandingQueryTransformer` together via
 
 **What it is.**
 
+<ul>
+
 - OpenAI provides GPT-series chat-completion models, the Whisper speech-recognition model, TTS
   voice-synthesis models, embedding models, a moderation model, and Dall·E image generation
 - Access is REST-based, authenticated with a bearer token supplied as `OPENAI_API_KEY`
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - In `llm-chat-agent`, when `app.gateway.enabled=false` (direct mode), `LocalChatBackend` calls
   OpenAI's chat-completion API via `ChatAssistant` (LangChain4j's `OpenAiChatModel`/`OpenAiStreamingChatModel`)
@@ -742,6 +808,8 @@ wires `CompressingQueryTransformer` and `ExpandingQueryTransformer` together via
   hide it behind, so every model/client bean takes it as an explicit constructor argument
 - Each module's own `StartupValidator` fails the application at boot if its required key is missing, giving an immediate
   and unambiguous error
+
+</ul>
 
 ---
 
@@ -788,8 +856,12 @@ capabilities below don't show up clearly in the online docs.
 
 **What it is.**
 
+<ul>
+
 - PostgreSQL is an open-source relational database; version 18 stores data in a versioned sub-directory inside the data
   volume, which is why the Docker volume mounts the parent path `/var/lib/postgresql`
+
+</ul>
 
 **How it's used here.** A single Postgres instance (from the root `docker-compose.yml`) hosts one
 database per module, each with its own Flyway history table so migrations never collide:
@@ -807,9 +879,13 @@ instance. Each module's `api_keys` table is independent, so a key minted for one
 authenticate against another. Database/table names kept their original `spring_ai*` naming from
 the source project — renaming infrastructure identifiers was out of scope for this migration.
 
+<ul>
+
 - `JdbcTemplate` (no ORM) is used for all custom SQL: key lookups, contacts queries, text-to-SQL execution, chat-memory
   persistence, document-ingestion tracking, and schema introspection at runtime
 - The `pgcrypto` extension is enabled in migration V5 to hash the development seed key inline
+
+</ul>
 
 ---
 
@@ -817,11 +893,17 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 **What it is.**
 
+<ul>
+
 - Flyway is a database-migration tool that tracks which SQL scripts have been applied via a version-history table and
   runs any pending ones at application startup
 - Prevents schema drift between environments by making migrations automatic and auditable
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - Seven versioned scripts (`V1` through `V7`) under `src/main/resources/db/migration` set up all tables and seed data —
   `V6` and `V7` are new, backing `JdbcChatMemoryStore` and `DocumentIngestionRunner` respectively (LangChain4j ships
@@ -832,16 +914,24 @@ the source project — renaming infrastructure identifiers was out of scope for 
 - Spring Boot 4 requires the `spring-boot-flyway` module explicitly on the classpath — `flyway-core` alone no longer
   triggers `FlywayAutoConfiguration`
 
+</ul>
+
 ---
 
 ### Redis
 
 **What it is.**
 
+<ul>
+
 - Redis is an in-memory data structure store used here in two distinct roles: as a persistent key-value / list store
   with AOF durability, and as a vector database via the RediSearch module
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - **Embedding store**: `langchain4j-community-redis`'s `RedisEmbeddingStore` is built directly in
   `RagConfig` against a `JedisPooled` client (host/port/db/auth read from `spring.data.redis.*`
@@ -857,14 +947,20 @@ the source project — renaming infrastructure identifiers was out of scope for 
 - **RedisInsight**: A companion `redis/redisinsight` container (port 5540) provides a browser UI for inspecting
   embedding-store contents during development
 
+</ul>
+
 ---
 
 ### Spring Security
 
 **What it is.**
 
+<ul>
+
 - Spring Security is the standard authentication and authorisation framework for Spring applications
 - Works through a chain of servlet filters that intercept every request before it reaches a controller
+
+</ul>
 
 **How it's used here.** The project implements a custom, database-backed API-key scheme instead of session or JWT:
 
@@ -880,9 +976,13 @@ the source project — renaming infrastructure identifiers was out of scope for 
 5. **`RestAuthenticationEntryPoint`** returns a structured JSON `{"status":401,...}` error rather than the default HTML
    challenge page
 
+<ul>
+
 - Auth can be fully disabled for local development via `API_AUTH_ENABLED=false`
 - Not used at all in `llm-playground` — that module has no security dependency, no `api_keys` table, and every endpoint
   is open
+
+</ul>
 
 ---
 
@@ -890,10 +990,16 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 **What it is.**
 
+<ul>
+
 - Micrometer is the metrics-instrumentation facade for the JVM — analogous to SLF4J for logging
 - Prometheus is a time-series metrics database that scrapes HTTP endpoints on a configurable interval
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - `spring-boot-starter-actuator` exposes `/ai/actuator/prometheus` as a Prometheus-format text scrape target
 - `micrometer-registry-prometheus` registers the Prometheus `MeterRegistry` with Spring Boot
@@ -905,17 +1011,25 @@ the source project — renaming infrastructure identifiers was out of scope for 
   histogram, enabling percentile and SLO dashboards in Grafana
 - Prometheus scrapes the app every 10 seconds via `observability/prometheus.yml`
 
+</ul>
+
 ---
 
 ### Grafana
 
 **What it is.**
 
+<ul>
+
 - Grafana is a dashboarding and visualisation platform that can query Prometheus (metrics), Tempo (traces), and Loki (
   logs) from a single UI
 - Supports alerting, annotations, and templated dashboards shareable as JSON
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - A `grafana/grafana` container (port 3000, admin/admin) is provisioned at startup via files under
   `observability/grafana/provisioning/`
@@ -924,16 +1038,24 @@ the source project — renaming infrastructure identifiers was out of scope for 
   immediately after `docker compose up`
 - Grafana depends on all three backend services in the Docker Compose definition, so startup ordering is correct
 
+</ul>
+
 ---
 
 ### Grafana Tempo
 
 **What it is.**
 
+<ul>
+
 - Tempo is a distributed tracing backend that stores and retrieves OpenTelemetry (OTLP) traces
 - Designed to be cost-efficient by storing traces on local or object storage without a separate index
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - The app exports traces over OTLP HTTP to `http://localhost:4318/v1/traces` at 100% sampling, configurable via
   `OTEL_EXPORTER_OTLP_ENDPOINT`
@@ -944,16 +1066,24 @@ the source project — renaming infrastructure identifiers was out of scope for 
 - Tempo is configured in `observability/tempo.yml` with OTLP gRPC (port 4317) and HTTP (port 4318) receivers and 24-hour
   local trace retention
 
+</ul>
+
 ---
 
 ### Grafana Loki
 
 **What it is.**
 
+<ul>
+
 - Loki is a log aggregation system designed to work like Prometheus: it indexes only metadata labels rather than full
   log content, making it highly storage-efficient compared to Elasticsearch
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - `logback-spring.xml` configures two appenders: `ASYNC_CONSOLE` (colour-formatted, buffered through a 512-message
   queue) and `JSON_FILE` (Logstash JSON format, rolling daily, gzip-compressed, 30-day retention, max 100 MB per file)
@@ -962,17 +1092,25 @@ the source project — renaming infrastructure identifiers was out of scope for 
 - The JSON files under `logs/` are the source Loki (or a log-shipper sidecar) would tail and push into the aggregation
   backend
 
+</ul>
+
 ---
 
 ### Spring WebFlux / Project Reactor (`Flux`)
 
 **What it is.**
 
+<ul>
+
 - Project Reactor is a reactive-streams library for the JVM; `Flux<T>` represents an asynchronous sequence of 0–N items
 - Spring WebFlux uses it for non-blocking HTTP handling, allowing a single thread to serve many concurrent in-flight
   requests
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - `spring-boot-starter-webflux` is now a **direct** dependency in `llm-chat-agent`/`llm-audio`/`llm-image`
   (it used to arrive transitively via Spring AI's RAG/vector-store starters) — needed purely for
@@ -990,11 +1128,15 @@ the source project — renaming infrastructure identifiers was out of scope for 
 - `WebClient` is also used for all non-streaming gateway calls, where `.block()` converts the reactive result to a
   blocking call within a configured timeout
 
+</ul>
+
 ---
 
 ### LangChain4j Document Loading (Apache PDFBox)
 
 **What it is.**
+
+<ul>
 
 - `langchain4j-document-parser-apache-pdfbox` wraps Apache PDFBox into LangChain4j's
   `DocumentParser` interface — `parse(InputStream): Document`. LangChain4j ships separate parser
@@ -1002,7 +1144,11 @@ the source project — renaming infrastructure identifiers was out of scope for 
   separate `DocumentSplitters`/`DocumentSplitter` API for chunking, composed together by
   `EmbeddingStoreIngestor`
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - `DocumentIngestionRunner` parses the two corporate PDFs (`AtlasCorp-TravelPolicy.pdf`,
   `AtlasCorp_Events_Holidays.pdf`) with `ApachePdfBoxDocumentParser`, attaches `fileName`/`source`/
@@ -1016,11 +1162,15 @@ the source project — renaming infrastructure identifiers was out of scope for 
   page-aware reading mode here the way Spring AI's PDF reader had, so `Citation.page` is always
   `null` in this implementation (kept nullable rather than removed, see `Citation`'s javadoc)
 
+</ul>
+
 ---
 
 ### JDBC Chat Memory (LangChain4j `ChatMemoryStore`)
 
 **What it is.**
+
+<ul>
 
 - LangChain4j's `dev.langchain4j.store.memory.chat.ChatMemoryStore` is a three-method interface
   (`getMessages`/`updateMessages`/`deleteMessages`) for pluggable conversation persistence — the
@@ -1029,7 +1179,11 @@ the source project — renaming infrastructure identifiers was out of scope for 
   `langchain4j-community-redis`, but this project keeps chat memory on Postgres, separate from the
   Redis-backed embedding store, matching the original architecture's separation of concerns)
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - `JdbcChatMemoryStore` implements the three methods directly against a `chat_memory` table
   (`db/migration/V6__create_chat_memory.sql`): one row per conversation, the full message list
@@ -1040,17 +1194,25 @@ the source project — renaming infrastructure identifiers was out of scope for 
 - This gives the service stateful multi-turn memory across HTTP requests with no in-process state — memory survives
   restarts automatically, the same guarantee the Spring AI version had
 
+</ul>
+
 ---
 
 ### Lombok
 
 **What it is.**
 
+<ul>
+
 - Lombok is a Java annotation processor that generates boilerplate code (constructors, getters, `toString`,
   `equals/hashCode`, builders, loggers) at compile time
 - Reduces source verbosity without adding runtime overhead — all generated code is plain Java bytecode
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - `@RequiredArgsConstructor` on service and component classes generates the constructor used by Spring's constructor
   injection — no `@Autowired` annotations needed
@@ -1065,17 +1227,25 @@ the source project — renaming infrastructure identifiers was out of scope for 
 - Lombok is excluded from the final fat-jar via `spring-boot-maven-plugin`'s exclude list because it is a
   compile-time-only tool with no runtime dependency
 
+</ul>
+
 ---
 
 ### Testcontainers
 
 **What it is.**
 
+<ul>
+
 - Testcontainers is a Java library that starts real Docker containers during JUnit tests and cleans them up afterwards
 - `@ServiceConnection` (a Spring Boot 3.1+ annotation) wires the container's dynamic port and credentials directly into
   the application context with no manual property overriding
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - `TestcontainersConfiguration` defines a `@ServiceConnection PostgreSQLContainer<>("postgres:18")` bean
 - When `LLMApplicationTests` loads the context, Spring Boot auto-overrides the datasource URL with the container's
@@ -1089,21 +1259,31 @@ the source project — renaming infrastructure identifiers was out of scope for 
 - Flyway migrations and all JDBC queries in tests run against a real Postgres 18 instance
 - The suite is fully self-contained and runs in CI with only Docker available — no locally provisioned database required
 
+</ul>
+
 ---
 
 ### JaCoCo
 
 **What it is.**
 
+<ul>
+
 - JaCoCo (Java Code Coverage) is a bytecode-instrumentation tool that measures which lines, branches, and instructions
   are exercised by the test suite
 - Produces HTML, XML, and CSV reports consumed by CI pipelines and IDEs
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - The `jacoco-maven-plugin` is configured with two executions: `prepare-agent` (attaches the JaCoCo agent before tests
   run) and `report` (bound to the `verify` phase, producing HTML/XML reports under `target/site/jacoco`)
 - Running `./mvnw verify` compiles, runs all tests, and generates the full coverage report in one step
+
+</ul>
 
 ---
 
@@ -1111,11 +1291,17 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 **What it is.**
 
+<ul>
+
 - The `git-commit-id-maven-plugin` reads Git metadata (branch, commit hash, timestamp, dirty flag) at build time and
   writes it to `git.properties` on the classpath
 - Makes every built artifact self-describing — the running application knows exactly which commit it was built from
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - The plugin runs during the `initialize` phase and generates `target/classes/git.properties`
 - Spring Boot Actuator's `/ai/actuator/info` endpoint automatically exposes these properties (enabled by
@@ -1123,16 +1309,24 @@ the source project — renaming infrastructure identifiers was out of scope for 
 - Every running instance reports its exact commit, branch, and dirty-flag state — invaluable for verifying deployments
   and correlating incidents to code changes
 
+</ul>
+
 ---
 
 ### Docker Compose
 
 **What it is.**
 
+<ul>
+
 - Docker Compose is a tool for defining and running multi-container applications from a single YAML file
 - Health checks between services enable controlled startup ordering without manual delays
 
+</ul>
+
 **How it's used here.**
+
+<ul>
 
 - `docker-compose.yml` defines seven services: `postgres` (port 5432), `redis` (port 6379), `redisinsight` (port 5540),
   `tempo` (ports 3200/4317/4318), `loki` (port 3100), `prometheus` (port 9090), and `grafana` (port 3000)
@@ -1143,3 +1337,5 @@ the source project — renaming infrastructure identifiers was out of scope for 
   reaches containers on `localhost`
 - `spring.docker.compose.enabled=false` prevents Spring Boot's built-in Compose integration from re-managing the
   already-running containers
+
+</ul>
