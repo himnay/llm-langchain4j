@@ -9,7 +9,7 @@ import java.util.TimeZone;
 
 @SpringBootApplication
 @EnableConfigurationProperties(InjectionGuardProperties.class)
-public class LLMApplication {
+class LLMApplication {
 
     public static void main(String[] args) {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
