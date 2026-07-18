@@ -13,24 +13,24 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Images", description = "Image captioning and AI image generation endpoints")
 @Validated
 @RestController
-@RequestMapping("/api/v1/images")
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/images")
+@Tag(name = "Images", description = "Image captioning and AI image generation endpoints")
 class ImageRestController {
 
     private final ImageCaptionService imageCaptionService;
     private final ImageBackend imageBackend;
 
-    @Operation(summary = "Generate a text caption for a named image")
     @PostMapping("/caption")
+    @Operation(summary = "Generate a text caption for a named image")
     public String caption(@Validated @RequestBody ImageCaptionRequest request) {
         return imageCaptionService.captionImage(request.getImageName(), request.getMessage());
     }
 
-    @Operation(summary = "Generate a PNG image from a text prompt using Stability AI")
     @GetMapping(value = "/generate", produces = MediaType.IMAGE_PNG_VALUE)
+    @Operation(summary = "Generate a PNG image from a text prompt using Stability AI")
     public ResponseEntity<byte[]> generateImage(
             @NotBlank(message = "message is required") @RequestParam String message,
             @NotBlank(message = "style is required") @RequestParam String style,

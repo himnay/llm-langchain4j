@@ -19,16 +19,16 @@ import java.util.Map;
  * reply back to audio. Previously lived on {@code llm-chat}'s {@code ChatController} before the
  * chat/audio split.
  */
-@Tag(name = "Voice Chat", description = "Voice-to-voice and voice-to-text chat endpoints")
 @RestController
-@RequestMapping("/api/v1/chat")
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/chat")
+@Tag(name = "Voice Chat", description = "Voice-to-voice and voice-to-text chat endpoints")
 class VoiceChatController {
 
     private final VoiceChatService voiceChatService;
 
-    @Operation(summary = "Send an audio file, receive an AI audio response (voice chat)")
     @PostMapping("/audio/voice")
+    @Operation(summary = "Send an audio file, receive an AI audio response (voice chat)")
     public ResponseEntity<byte[]> voiceChat(@RequestParam("file") MultipartFile file) {
         VoiceChatService.VoiceExchange exchange = voiceChatService.exchange(file);
         byte[] audioResponse = voiceChatService.speak(exchange.aiResponse());
@@ -40,8 +40,8 @@ class VoiceChatController {
                 .body(audioResponse);
     }
 
-    @Operation(summary = "Send an audio file, receive transcript and AI text response")
     @PostMapping("/audio")
+    @Operation(summary = "Send an audio file, receive transcript and AI text response")
     public Map<String, Object> chatWithAudio(@RequestParam("file") MultipartFile file) {
         VoiceChatService.VoiceExchange exchange = voiceChatService.exchange(file);
         return Map.of("transcript", exchange.transcript(), "aiResponse", exchange.aiResponse());

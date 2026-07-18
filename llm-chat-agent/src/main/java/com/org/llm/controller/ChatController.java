@@ -29,12 +29,12 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 import java.util.Map;
 
-@Tag(name = "Chat", description = "Conversational AI chat endpoints")
 @Slf4j
 @Validated
 @RestController
-@RequestMapping("/api/v1/chat")
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/chat")
+@Tag(name = "Chat", description = "Conversational AI chat endpoints")
 class ChatController {
 
     private final ChatService chatService;
@@ -68,22 +68,22 @@ class ChatController {
         return new PageImpl<>(list.subList(fromIndex, toIndex), pageRequest, total);
     }
 
-    @Operation(summary = "Send a chat message and receive a blocking response with RAG citations")
     @PostMapping
+    @Operation(summary = "Send a chat message and receive a blocking response with RAG citations")
     public ChatAnswer chat(@Validated @RequestBody ChatRequest chatRequest) {
         return chatService.chat(chatRequest.getConversationId(), chatRequest.getMessage(), chatRequest.getDocumentSource());
     }
 
-    @Operation(summary = "Generate a multi-day travel guide for a given city")
     @GetMapping("/travel-guide")
+    @Operation(summary = "Generate a multi-day travel guide for a given city")
     public TravelPlan prepareTravelPlan(
             @NotBlank(message = "city is required") @RequestParam String city,
             @Positive(message = "days must be a positive number") @RequestParam Integer days) {
         return travelGuideService.prepareTravelPlan(city, days);
     }
 
-    @Operation(summary = "Retrieve paginated chat memory for a conversation")
     @GetMapping("/memory")
+    @Operation(summary = "Retrieve paginated chat memory for a conversation")
     public Map<String, Object> fetchMemory(
             @NotBlank(message = "conversationId is required") @RequestParam String conversationId,
             @RequestParam(defaultValue = "0") int page,
@@ -101,8 +101,8 @@ class ChatController {
 
     @Operation(summary = "Stream a chat response as Server-Sent Events: 'token' events with answer "
             + "text, followed by one trailing 'citations' event with the RAG sources used (JSON array)")
-    @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @CircuitBreaker(name = "llm-chat", fallbackMethod = "streamFallback")
+    @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> streamChat(@Validated @RequestBody ChatRequest chatRequest) {
         return chatService.streamChat(chatRequest.getConversationId(), chatRequest.getMessage(), chatRequest.getDocumentSource());
     }

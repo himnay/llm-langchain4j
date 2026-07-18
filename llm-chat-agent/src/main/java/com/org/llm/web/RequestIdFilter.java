@@ -25,8 +25,8 @@ import java.util.UUID;
  *   <li>The ID is echoed back to the caller via the {@code X-Request-ID} response header.</li>
  * </ul>
  */
-@Order(Ordered.HIGHEST_PRECEDENCE)
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class RequestIdFilter extends OncePerRequestFilter {
 
     private static final String REQUEST_ID_HEADER = "X-Request-ID";

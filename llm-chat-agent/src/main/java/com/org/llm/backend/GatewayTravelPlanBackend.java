@@ -18,8 +18,8 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "app.gateway", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "app.gateway", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class GatewayTravelPlanBackend implements TravelPlanBackend {
 
     /**

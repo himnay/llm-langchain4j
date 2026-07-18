@@ -21,8 +21,8 @@ import org.springframework.web.bind.annotation.*;
  */
 @Validated
 @RestController
-@RequestMapping("/api/v1/playground")
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/playground")
 class PlaygroundController {
 
     private final ClassifierAssistant classifierAssistant;

@@ -18,8 +18,8 @@ import java.util.List;
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "app.gateway", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "app.gateway", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class GatewayChatBackend implements ChatBackend {
 
     private final GatewayClient gatewayClient;

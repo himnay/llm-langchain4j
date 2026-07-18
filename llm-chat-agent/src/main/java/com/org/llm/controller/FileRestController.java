@@ -11,16 +11,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Files", description = "File reading and AI-assisted document Q&A endpoints")
 @RestController
-@RequestMapping("/api/v1/files")
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/files")
+@Tag(name = "Files", description = "File reading and AI-assisted document Q&A endpoints")
 class FileRestController {
 
     private final FileReadService fileReadService;
 
-    @Operation(summary = "Read a document file and answer a question about its content")
     @PostMapping("/read")
+    @Operation(summary = "Read a document file and answer a question about its content")
     public String caption(@Valid @RequestBody FileReadRequest request) {
         return fileReadService.readFile(request.getFileName(), request.getMessage());
     }

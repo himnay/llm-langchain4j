@@ -29,8 +29,8 @@ import java.util.List;
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "app.gateway", name = "enabled", havingValue = "false")
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "app.gateway", name = "enabled", havingValue = "false")
 public class LocalChatBackend implements ChatBackend {
 
     private final ChatAssistant chatAssistant;
