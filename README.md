@@ -4,19 +4,19 @@
 
 ## Table of contents
 
-1. [🗺️ Component Architecture](#-component-architecture)
-2. [🛠️ Technology Stack](#-technology-stack)
-3. [🏗️ Layout](#-layout)
-4. [🚀 Getting Started](#-getting-started)
-5. [🔑 Authentication](#-authentication)
-6. 🔐 [Prompt Injection Security](#prompt-injection-security)
-7. 🚪 [Architecture — AiServices Proxy Pattern](#architecture--aiservices-proxy-pattern)
-8. [🔀 Routing through llm-gateway](#-routing-through-llm-gateway)
-9. [📡 Endpoints](#-endpoints)
-10. [📊 Observability](#-observability)
-11. [🧱 Configuration](#-configuration)
-12. [✅ Build & Test](#-build--test)
-13. 🧰 [Technology Deep Dive](#technology-deep-dive)
+1. 🗺️ [Component Architecture](#-component-architecture)
+2. 🚪 [Architecture — AiServices Proxy Pattern](#-architecture--aiservices-proxy-pattern)
+3. 🛠️ [Technology Stack](#-technology-stack)
+4. 🏗️ [Layout](#-layout)
+5. 🚀 [Getting Started](#-getting-started)
+6. 🔑 [Authentication](#-authentication)
+7. 🔐 [Prompt Injection Security](#-prompt-injection-security)
+8. 🔀 [Routing through llm-gateway](#-routing-through-llm-gateway)
+9. 📡 [Endpoints](#-endpoints)
+10. 📊 [Observability](#-observability)
+11. 🧱 [Configuration](#-configuration)
+12. ✅ [Build & Test](#-build--test)
+13. 🧰 [Technology Deep Dive](#-technology-deep-dive)
 
 A Maven **multi-module** reactor ported from a sibling project (`llm-chat`) that used Spring AI
 end-to-end. Every Spring AI integration has been replaced with **LangChain4j 1.16.3** — the goal
@@ -126,176 +126,7 @@ rather than duplicating chat logic; and both `llm-chat-agent` and `llm-image` fo
 `Backend` strategy layer between the gateway path and the direct-OpenAI-via-LangChain4j path,
 selected by `app.gateway.enabled` at startup — never per-request.
 
-## 🛠️ Technology Stack
-
-<ul>
-
-- **Spring Boot** 4.1.0 · **LangChain4j** 1.16.3 · **Java** 25 · **Maven**
-- **OpenAI** (chat, embeddings, moderation, audio transcription, image generation) · the official
-  **OpenAI Java SDK** directly for text-to-speech (LangChain4j has no TTS abstraction)
-- **PostgreSQL** — chat memory, contacts, text-to-SQL data, API keys, document-ingestion tracking
-- **Redis** — embedding store (`langchain4j-community-redis`), queried by the RAG content retriever
-- **Spring Security** — API-key authentication (`X-API-Key`) + in-memory rate limiting
-- **Observability**: Micrometer + Prometheus + Grafana + Tempo (traces) + Loki (logs)
-
-</ul>
-
-## 🏗️ Layout
-
-Each module is a self-contained Spring Boot app under `com.org.llm.*`; the package name repeats
-across modules but they never share a classpath at runtime.
-
-<ul>
-
-- **`llm-chat-agent/`** — `controller/` (chat, file, recipe, text-to-sql, RAG query-transform
-  playground), `service/` (`ChatService`, `TravelGuideService`, `TextToSqlService`,
-  `FileReadService`, `AnswerEvaluator`, …), `backend/` — **Strategy** pattern for where
-  chat/travel-guide work executes (`ChatBackend`, `TravelPlanBackend`, each with a `Gateway*` and a
-  `Local*` implementation, selected at startup by `app.gateway.enabled`), `assistant/` (LangChain4j
-  `AiServices` interfaces: `ChatAssistant`, `TravelPlanAssistant`, `FaithfulnessJudge`),
-  `guardrail/BlockedPhraseGuardrail`, `observability/LoggingChatModelListener`,
-  `memory/JdbcChatMemoryStore`, `rag/` (query-transformer strategies, `RagFilterContext`,
-  `RetrievedContentContext`, `CapturingContentRetriever`, `CompressThenExpandQueryTransformer`,
-  `DocumentIngestionRunner`), `tool/` (weather, contacts), `config/` (`AIConfig`, `RagConfig`,
-  `StartupValidator`).
-- **`llm-audio/`** — `controller/` (`AudioController`, `VoiceChatController`), `service/`
-  (`AudioService`, `VoiceChatService` — validate → store → transcribe → chat → synthesize),
-  `client/ChatAgentClient` (calls `llm-chat-agent`'s `/chat` endpoint over HTTP for the AI reply).
-- **`llm-image/`** — `controller/ImageRestController`, `service/ImageCaptionService`,
-  `backend/ImageBackend` (`Gateway*`/`Local*` Dall-E strategy).
-- **`llm-playground/`** — `assistant/` (`ClassifierAssistant`, `ExtractionAssistant`,
-  `SummarizerAssistant`), `service/ModerationService`, `controller/PlaygroundController`,
-  `config/AIConfig`. No database, no auth — a thin REST surface over a handful of `AiServices`.
-- **Shared per module** (each module has its own copy — they're separate deployables, not a
-  shared library): `security/` (`ApiKeyService`, `ApiKeyAuthFilter`, `RateLimitFilter`,
-  `SecurityConfig`, `RestAuthenticationEntryPoint`), `exception/` (`GlobalExceptionHandler` +
-  `ApiError`), `web/RequestIdFilter`, `config/ObservabilityConfig` + `AsyncConfig`.
-
-</ul>
-
-## 🚀 Getting Started
-
-### 1. Start infrastructure
-
-```bash
-docker compose up -d        # Postgres, Redis, RedisInsight + Prometheus/Grafana/Tempo/Loki
-```
-
-### 2. Configure secrets
-
-```bash
-export OPENAI_API_KEY=sk-...
-export WEATHER_API_KEY=...            # only for llm-chat-agent's weather tool
-```
-
-(No Stability AI key — LangChain4j has no Stability AI integration, so `llm-image` now generates
-with OpenAI Dall-E using the same `OPENAI_API_KEY`.)
-
-### 3. Run each module you need
-
-```bash
-./mvnw -pl llm-chat-agent spring-boot:run    # port 8082
-./mvnw -pl llm-audio spring-boot:run         # port 8083 — calls llm-chat-agent for voice-chat replies
-./mvnw -pl llm-image spring-boot:run         # port 8084
-./mvnw -pl llm-playground spring-boot:run    # port 8085 — no DB/auth, just AiServices demos
-```
-
-Or build/test the whole reactor from the root: `./mvnw verify`. Each module serves under context
-path **`/ai`** on its own port (e.g. http://localhost:8082/ai).
-
-## 🔑 Authentication
-
-<ul>
-
-- API-key auth is **enabled by default** in `llm-chat-agent`, `llm-audio`, and `llm-image` — each
-  request must include `X-API-Key` (`llm-playground` has no auth/persistence layer at all)
-- Excluded from auth: actuator endpoints, the demo static HTML pages, and `/error`
-- Keys are stored as SHA-256 hashes in each module's own `api_keys` PostgreSQL table (separate
-  databases — `spring_ai`, `spring_ai_audio`, `spring_ai_image` — so a key minted for one module
-  doesn't work on another) — raw values are never persisted
-- Flyway seeds a **development key** per module, ready to use immediately:
-
-</ul>
-
-```
-llm-chat-agent: X-API-Key: llm-chat-dev-key-2026
-llm-audio:      X-API-Key: llm-audio-dev-key-2026
-llm-image:      X-API-Key: llm-image-dev-key-2026
-```
-
-```bash
-curl -s "http://localhost:8082/ai/api/v1/recipe?ingredients=eggs,flour" \
-  -H "X-API-Key: llm-chat-dev-key-2026"
-```
-
-Mint a real key (against the relevant module's database):
-
-```bash
-raw=$(openssl rand -hex 32)
-hash=$(printf "%s" "$raw" | shasum -a 256 | cut -d' ' -f1)
-psql -h localhost -U postgres -d spring_ai \
-  -c "INSERT INTO api_keys (key_hash, label) VALUES ('$hash', 'my-client');"
-echo "X-API-Key: $raw"
-```
-
-<ul>
-
-- To disable auth for local development: set `API_AUTH_ENABLED=false` (or `app.security.auth-enabled=false`)
-- The demo HTML UIs under `/ai/*.html` assume an open instance or that you inject the dev key directly
-
-</ul>
-
-## Prompt Injection Security
-
-### LangChain4j InputGuardrail (`BlockedPhraseGuardrail`)
-
-`BlockedPhraseGuardrail` implements LangChain4j's `InputGuardrail` interface and runs before every
-model call. Unlike Spring AI's advisor chain — where `SafeGuardAdvisor.order(Integer.MIN_VALUE)` was
-needed to guarantee first-execution — LangChain4j has no ordering concept: an `InputGuardrail`
-always runs first, unconditionally.
-
-The guardrail was upgraded from simple lowercase-substring matching against a short hardcoded phrase
-list to full regex matching driven by a configurable pattern catalogue. Patterns are loaded at
-startup by `InjectionGuardProperties` (`app.security.injection-guard.patterns`) and compiled into
-`java.util.regex.Pattern` instances. Any invalid regex is logged and skipped at startup rather than
-crashing the application.
-
-Attack categories covered:
-
-| Category                       | Example trigger                                            |
-|--------------------------------|------------------------------------------------------------|
-| Instruction override           | "ignore all previous instructions"                         |
-| Roleplay / persona hijack      | "you are now DAN", "pretend to be an AI without rules"     |
-| System prompt exfiltration     | "reveal your system prompt", "what are your instructions?" |
-| Structural delimiter injection | `[SYSTEM]`, `<system>`, ` ``` system`                      |
-| Jailbreak keywords             | "jailbreak", "developer mode", "DAN mode"                  |
-
-**How to add new attack patterns**
-
-```yaml
-app:
-  security:
-    injection-guard:
-      patterns:
-        - "(?i)your new pattern here"
-```
-
-No code change or redeployment required — patterns are read from `application.yml` (or environment
-variable overrides) at startup. Set `INJECTION_GUARD_ENABLED=false` to disable entirely for
-development runs that don't need the guard.
-
-### LangChain4j moderation (`@Moderate`)
-
-The `ChatAssistant` AiService method is annotated with `@Moderate`, backed by an
-`OpenAiModerationModel` bean. LangChain4j calls OpenAI's Moderation API automatically before
-returning the model's response. This is a second, orthogonal layer of defense: the guardrail
-catches malicious input before the model is called; moderation catches harmful content in the
-model's output. The Spring AI version of this service had no output moderation; `@Moderate` was
-added here specifically to exercise LangChain4j's built-in capability.
-
----
-
-## Architecture — AiServices Proxy Pattern
+## 🚪 Architecture — AiServices Proxy Pattern
 
 LangChain4j's `AiServices` turns a plain Java interface into a fully wired LLM client at construction time. The annotations below are the primary contract between the interface declaration and the framework:
 
@@ -419,6 +250,175 @@ Two details this sequence makes concrete:
   it does not execute anything itself.
 
 </ul>
+
+---
+
+## 🛠️ Technology Stack
+
+<ul>
+
+- **Spring Boot** 4.1.0 · **LangChain4j** 1.16.3 · **Java** 25 · **Maven**
+- **OpenAI** (chat, embeddings, moderation, audio transcription, image generation) · the official
+  **OpenAI Java SDK** directly for text-to-speech (LangChain4j has no TTS abstraction)
+- **PostgreSQL** — chat memory, contacts, text-to-SQL data, API keys, document-ingestion tracking
+- **Redis** — embedding store (`langchain4j-community-redis`), queried by the RAG content retriever
+- **Spring Security** — API-key authentication (`X-API-Key`) + in-memory rate limiting
+- **Observability**: Micrometer + Prometheus + Grafana + Tempo (traces) + Loki (logs)
+
+</ul>
+
+## 🏗️ Layout
+
+Each module is a self-contained Spring Boot app under `com.org.llm.*`; the package name repeats
+across modules but they never share a classpath at runtime.
+
+<ul>
+
+- **`llm-chat-agent/`** — `controller/` (chat, file, recipe, text-to-sql, RAG query-transform
+  playground), `service/` (`ChatService`, `TravelGuideService`, `TextToSqlService`,
+  `FileReadService`, `AnswerEvaluator`, …), `backend/` — **Strategy** pattern for where
+  chat/travel-guide work executes (`ChatBackend`, `TravelPlanBackend`, each with a `Gateway*` and a
+  `Local*` implementation, selected at startup by `app.gateway.enabled`), `assistant/` (LangChain4j
+  `AiServices` interfaces: `ChatAssistant`, `TravelPlanAssistant`, `FaithfulnessJudge`),
+  `guardrail/BlockedPhraseGuardrail`, `observability/LoggingChatModelListener`,
+  `memory/JdbcChatMemoryStore`, `rag/` (query-transformer strategies, `RagFilterContext`,
+  `RetrievedContentContext`, `CapturingContentRetriever`, `CompressThenExpandQueryTransformer`,
+  `DocumentIngestionRunner`), `tool/` (weather, contacts), `config/` (`AIConfig`, `RagConfig`,
+  `StartupValidator`).
+- **`llm-audio/`** — `controller/` (`AudioController`, `VoiceChatController`), `service/`
+  (`AudioService`, `VoiceChatService` — validate → store → transcribe → chat → synthesize),
+  `client/ChatAgentClient` (calls `llm-chat-agent`'s `/chat` endpoint over HTTP for the AI reply).
+- **`llm-image/`** — `controller/ImageRestController`, `service/ImageCaptionService`,
+  `backend/ImageBackend` (`Gateway*`/`Local*` Dall-E strategy).
+- **`llm-playground/`** — `assistant/` (`ClassifierAssistant`, `ExtractionAssistant`,
+  `SummarizerAssistant`), `service/ModerationService`, `controller/PlaygroundController`,
+  `config/AIConfig`. No database, no auth — a thin REST surface over a handful of `AiServices`.
+- **Shared per module** (each module has its own copy — they're separate deployables, not a
+  shared library): `security/` (`ApiKeyService`, `ApiKeyAuthFilter`, `RateLimitFilter`,
+  `SecurityConfig`, `RestAuthenticationEntryPoint`), `exception/` (`GlobalExceptionHandler` +
+  `ApiError`), `web/RequestIdFilter`, `config/ObservabilityConfig` + `AsyncConfig`.
+
+</ul>
+
+## 🚀 Getting Started
+
+### 1. Start infrastructure
+
+```bash
+docker compose up -d        # Postgres, Redis, RedisInsight + Prometheus/Grafana/Tempo/Loki
+```
+
+### 2. Configure secrets
+
+```bash
+export OPENAI_API_KEY=sk-...
+export WEATHER_API_KEY=...            # only for llm-chat-agent's weather tool
+```
+
+(No Stability AI key — LangChain4j has no Stability AI integration, so `llm-image` now generates
+with OpenAI Dall-E using the same `OPENAI_API_KEY`.)
+
+### 3. Run each module you need
+
+```bash
+./mvnw -pl llm-chat-agent spring-boot:run    # port 8082
+./mvnw -pl llm-audio spring-boot:run         # port 8083 — calls llm-chat-agent for voice-chat replies
+./mvnw -pl llm-image spring-boot:run         # port 8084
+./mvnw -pl llm-playground spring-boot:run    # port 8085 — no DB/auth, just AiServices demos
+```
+
+Or build/test the whole reactor from the root: `./mvnw verify`. Each module serves under context
+path **`/ai`** on its own port (e.g. http://localhost:8082/ai).
+
+## 🔑 Authentication
+
+<ul>
+
+- API-key auth is **enabled by default** in `llm-chat-agent`, `llm-audio`, and `llm-image` — each
+  request must include `X-API-Key` (`llm-playground` has no auth/persistence layer at all)
+- Excluded from auth: actuator endpoints, the demo static HTML pages, and `/error`
+- Keys are stored as SHA-256 hashes in each module's own `api_keys` PostgreSQL table (separate
+  databases — `spring_ai`, `spring_ai_audio`, `spring_ai_image` — so a key minted for one module
+  doesn't work on another) — raw values are never persisted
+- Flyway seeds a **development key** per module, ready to use immediately:
+
+</ul>
+
+```
+llm-chat-agent: X-API-Key: llm-chat-dev-key-2026
+llm-audio:      X-API-Key: llm-audio-dev-key-2026
+llm-image:      X-API-Key: llm-image-dev-key-2026
+```
+
+```bash
+curl -s "http://localhost:8082/ai/api/v1/recipe?ingredients=eggs,flour" \
+  -H "X-API-Key: llm-chat-dev-key-2026"
+```
+
+Mint a real key (against the relevant module's database):
+
+```bash
+raw=$(openssl rand -hex 32)
+hash=$(printf "%s" "$raw" | shasum -a 256 | cut -d' ' -f1)
+psql -h localhost -U postgres -d spring_ai \
+  -c "INSERT INTO api_keys (key_hash, label) VALUES ('$hash', 'my-client');"
+echo "X-API-Key: $raw"
+```
+
+<ul>
+
+- To disable auth for local development: set `API_AUTH_ENABLED=false` (or `app.security.auth-enabled=false`)
+- The demo HTML UIs under `/ai/*.html` assume an open instance or that you inject the dev key directly
+
+</ul>
+
+## 🔐 Prompt Injection Security
+
+### LangChain4j InputGuardrail (`BlockedPhraseGuardrail`)
+
+`BlockedPhraseGuardrail` implements LangChain4j's `InputGuardrail` interface and runs before every
+model call. Unlike Spring AI's advisor chain — where `SafeGuardAdvisor.order(Integer.MIN_VALUE)` was
+needed to guarantee first-execution — LangChain4j has no ordering concept: an `InputGuardrail`
+always runs first, unconditionally.
+
+The guardrail was upgraded from simple lowercase-substring matching against a short hardcoded phrase
+list to full regex matching driven by a configurable pattern catalogue. Patterns are loaded at
+startup by `InjectionGuardProperties` (`app.security.injection-guard.patterns`) and compiled into
+`java.util.regex.Pattern` instances. Any invalid regex is logged and skipped at startup rather than
+crashing the application.
+
+Attack categories covered:
+
+| Category                       | Example trigger                                            |
+|--------------------------------|------------------------------------------------------------|
+| Instruction override           | "ignore all previous instructions"                         |
+| Roleplay / persona hijack      | "you are now DAN", "pretend to be an AI without rules"     |
+| System prompt exfiltration     | "reveal your system prompt", "what are your instructions?" |
+| Structural delimiter injection | `[SYSTEM]`, `<system>`, ` ``` system`                      |
+| Jailbreak keywords             | "jailbreak", "developer mode", "DAN mode"                  |
+
+**How to add new attack patterns**
+
+```yaml
+app:
+  security:
+    injection-guard:
+      patterns:
+        - "(?i)your new pattern here"
+```
+
+No code change or redeployment required — patterns are read from `application.yml` (or environment
+variable overrides) at startup. Set `INJECTION_GUARD_ENABLED=false` to disable entirely for
+development runs that don't need the guard.
+
+### LangChain4j moderation (`@Moderate`)
+
+The `ChatAssistant` AiService method is annotated with `@Moderate`, backed by an
+`OpenAiModerationModel` bean. LangChain4j calls OpenAI's Moderation API automatically before
+returning the model's response. This is a second, orthogonal layer of defense: the guardrail
+catches malicious input before the model is called; moderation catches harmful content in the
+model's output. The Spring AI version of this service had no output moderation; `@Moderate` was
+added here specifically to exercise LangChain4j's built-in capability.
 
 ---
 
@@ -549,7 +549,7 @@ http://localhost:3000 (admin/admin) with the auto-provisioned **LLM Chat** dashb
 
 </ul>
 
-## Technology Deep Dive
+## 🧰 Technology Deep Dive
 
 This section explains every significant library, framework, database, and infrastructure component used in this
 project — what it is and exactly how it is wired up here.
