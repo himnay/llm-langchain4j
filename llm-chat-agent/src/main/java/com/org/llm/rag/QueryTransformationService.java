@@ -23,6 +23,7 @@ public class QueryTransformationService {
                 .collect(Collectors.toMap(QueryTransformationStrategy::technique, Function.identity()));
     }
 
+    /** Transforms. */
     public List<String> transform(QueryTransformRequest request) {
         QueryTransformationStrategy strategy = strategiesByTechnique.get(request.getTechnique());
         if (strategy == null) {

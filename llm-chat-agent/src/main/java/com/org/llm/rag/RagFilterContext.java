@@ -15,14 +15,17 @@ public class RagFilterContext {
 
     private final ThreadLocal<Filter> filter = new ThreadLocal<>();
 
+    /** Handles set. */
     public void set(Filter value) {
         filter.set(value);
     }
 
+    /** Returns the get. */
     public Filter get() {
         return filter.get();
     }
 
+    /** Clears. */
     public void clear() {
         filter.remove();
     }

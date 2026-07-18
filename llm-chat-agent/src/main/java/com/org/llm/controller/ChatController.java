@@ -68,12 +68,14 @@ class ChatController {
         return new PageImpl<>(list.subList(fromIndex, toIndex), pageRequest, total);
     }
 
+    /** Chats. */
     @PostMapping
     @Operation(summary = "Send a chat message and receive a blocking response with RAG citations")
     public ChatAnswer chat(@Validated @RequestBody ChatRequest chatRequest) {
         return chatService.chat(chatRequest.getConversationId(), chatRequest.getMessage(), chatRequest.getDocumentSource());
     }
 
+    /** Returns the prepare travel plan. */
     @GetMapping("/travel-guide")
     @Operation(summary = "Generate a multi-day travel guide for a given city")
     public TravelPlan prepareTravelPlan(
@@ -82,6 +84,7 @@ class ChatController {
         return travelGuideService.prepareTravelPlan(city, days);
     }
 
+    /** Fetches memory. */
     @GetMapping("/memory")
     @Operation(summary = "Retrieve paginated chat memory for a conversation")
     public Map<String, Object> fetchMemory(
@@ -99,6 +102,7 @@ class ChatController {
         );
     }
 
+    /** Streams chat. */
     @Operation(summary = "Stream a chat response as Server-Sent Events: 'token' events with answer "
             + "text, followed by one trailing 'citations' event with the RAG sources used (JSON array)")
     @CircuitBreaker(name = "llm-chat", fallbackMethod = "streamFallback")

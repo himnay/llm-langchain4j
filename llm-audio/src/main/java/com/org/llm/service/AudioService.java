@@ -32,6 +32,7 @@ public class AudioService {
      */
     private final OpenAIClient openAiClient;
 
+    /** Returns the store. */
     public StoredAudio store(MultipartFile file) {
         try {
             Files.createDirectories(AUDIO_DIR);
@@ -53,6 +54,7 @@ public class AudioService {
         }
     }
 
+    /** Returns the speech to text. */
     public String speechToText(String storedFileName) {
         byte[] audioBytes;
         try {
@@ -67,6 +69,7 @@ public class AudioService {
         return response.text();
     }
 
+    /** Returns the text to speech. */
     public byte[] textToSpeech(String text) {
         SpeechCreateParams params = SpeechCreateParams.builder()
                 .input(text)

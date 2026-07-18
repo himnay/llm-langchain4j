@@ -25,6 +25,7 @@ public class ContactsTool {
 
     private final JdbcTemplate jdbcTemplate;
 
+    /** Finds contacts by city. */
     @Tool("Find contacts in a given city")
     public List<Contact> findContactsByCity(@P("city to search") String city) {
         log.info("Finding contacts in city: " + city);
@@ -40,6 +41,7 @@ public class ContactsTool {
         return jdbcTemplate.query(sql, rowMapper, city);
     }
 
+    /** Formats as csv. */
     @Tool("Formats a list of contacts into CSV with headers: Name, Email, City")
     public String formatAsCsv(@P("contacts to format") List<Contact> contacts) {
         StringBuilder sb = new StringBuilder("Name,Email,City\n");

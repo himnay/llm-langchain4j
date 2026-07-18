@@ -27,6 +27,7 @@ public class ImageCaptionService {
         }
     }
 
+    /** Returns the caption image. */
     public String captionImage(String imageName, String message) {
         String base64 = readBase64("images/" + imageName);
         UserMessage userMessage = UserMessage.from(

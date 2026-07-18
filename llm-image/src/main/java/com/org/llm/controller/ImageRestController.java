@@ -23,12 +23,14 @@ class ImageRestController {
     private final ImageCaptionService imageCaptionService;
     private final ImageBackend imageBackend;
 
+    /** Returns the caption. */
     @PostMapping("/caption")
     @Operation(summary = "Generate a text caption for a named image")
     public String caption(@Validated @RequestBody ImageCaptionRequest request) {
         return imageCaptionService.captionImage(request.getImageName(), request.getMessage());
     }
 
+    /** Generates image. */
     @GetMapping(value = "/generate", produces = MediaType.IMAGE_PNG_VALUE)
     @Operation(summary = "Generate a PNG image from a text prompt using Stability AI")
     public ResponseEntity<byte[]> generateImage(

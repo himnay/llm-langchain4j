@@ -27,6 +27,7 @@ public class FileReadService {
         }
     }
 
+    /** Reads file. */
     public String readFile(String fileName, String message) {
         String base64 = readBase64("files/" + fileName);
         UserMessage userMessage = UserMessage.from(

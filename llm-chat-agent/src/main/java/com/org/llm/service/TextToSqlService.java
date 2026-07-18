@@ -19,6 +19,7 @@ public class TextToSqlService {
     private final JdbcTemplate jdbcTemplate;
     private final SqlValidator sqlValidator;
 
+    /** Processes. */
     public TextToSqlResponse process(TextToSqlRequest request) {
         int maxRows = normalizeMaxRows(request.getMaxRows());
         String schemaContext = schemaContext();

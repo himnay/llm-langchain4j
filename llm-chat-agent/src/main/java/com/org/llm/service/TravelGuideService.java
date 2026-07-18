@@ -36,6 +36,7 @@ public class TravelGuideService {
         }
     }
 
+    /** Returns the prepare travel plan. */
     public TravelPlan prepareTravelPlan(String city, Integer days) {
         return travelPlanBackend.plan(travelGuideTemplate, Map.of("city", city, "days", days));
     }

@@ -30,22 +30,26 @@ class PlaygroundController {
     private final SummarizerAssistant summarizerAssistant;
     private final ModerationService moderationService;
 
+    /** Returns the classify. */
     @PostMapping("/classify")
     public Sentiment classify(@Valid @RequestBody TextRequest request) {
         return classifierAssistant.classifySentiment(request.getText());
     }
 
+    /** Extracts. */
     @PostMapping("/extract")
     public ExtractedPerson extract(@Valid @RequestBody TextRequest request) {
         return extractionAssistant.extract(request.getText());
     }
 
+    /** Summarizes. */
     @PostMapping("/summarize")
     public String summarize(@Valid @RequestBody TextRequest request,
                             @Positive @RequestParam(defaultValue = "3") int maxSentences) {
         return summarizerAssistant.summarize(request.getText(), maxSentences);
     }
 
+    /** Returns the moderate. */
     @PostMapping("/moderate")
     public ModerationCheckResult moderate(@Valid @RequestBody TextRequest request) {
         return moderationService.check(request.getText());

@@ -25,6 +25,7 @@ public class RecipeService {
         return chatModel.chat(prompt);
     }
 
+    /** Returns the refine recipe. */
     public String refineRecipe(String draft) {
         SystemMessage systemMessage = SystemMessage.from(
                 "You are a recipe formatter. Convert recipes into JSON with keys: 'dish', 'ingredients', 'steps'.");

@@ -52,6 +52,7 @@ public class SecurityConfig {
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final SecurityProperties properties;
 
+    /** Defines the filter chain bean. */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -84,6 +85,7 @@ public class SecurityConfig {
                 .build();
     }
 
+    /** Defines the cors configuration source bean. */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();

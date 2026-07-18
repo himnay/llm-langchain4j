@@ -18,6 +18,7 @@ public class ModerationService {
 
     private final ModerationModel moderationModel;
 
+    /** Checks. */
     public ModerationCheckResult check(String text) {
         Response<Moderation> response = moderationModel.moderate(text);
         Moderation moderation = response.content();

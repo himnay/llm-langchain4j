@@ -28,6 +28,7 @@ public class ChatAgentClient {
         this.properties = properties;
     }
 
+    /** Chats. */
     public String chat(String conversationId, String message, String documentSource) {
         ChatAgentChatResponse response = webClient.post()
                 .uri("/chat")

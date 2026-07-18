@@ -18,15 +18,18 @@ public class RetrievedContentContext {
 
     private final ThreadLocal<List<Content>> retrieved = new ThreadLocal<>();
 
+    /** Handles set. */
     public void set(List<Content> value) {
         retrieved.set(value);
     }
 
+    /** Returns the get. */
     public List<Content> get() {
         List<Content> value = retrieved.get();
         return value == null ? List.of() : value;
     }
 
+    /** Clears. */
     public void clear() {
         retrieved.remove();
     }
