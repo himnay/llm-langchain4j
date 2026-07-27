@@ -19,18 +19,11 @@
 
     <dependencies>
         <dependency>
-            <!-- Pulled in unconditionally by the openapi-generator-maven-plugin "spring"
-                 generator's Java model templates (import org.openapitools.jackson.nullable.JsonNullable),
-                 even though playground.yaml doesn't currently mark any property nullable: true. -->
             <groupId>org.openapitools</groupId>
             <artifactId>jackson-databind-nullable</artifactId>
             <version>0.2.6</version>
         </dependency>
         <dependency>
-            <!-- Required for the generated models' @io.swagger.v3.oas.annotations.media.Schema
-                 annotations (emitted unconditionally by the "spring" generator's Java model
-                 templates). Not managed by the Spring Boot parent BOM on its own (only
-                 transitively via springdoc), so pinned explicitly here. -->
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-annotations-jakarta</artifactId>
             <version>2.2.30</version>

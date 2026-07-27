@@ -16,9 +16,6 @@
 
     <dependencies>
         <dependency>
-            <!-- Pulled in unconditionally by the openapi-generator-maven-plugin "spring"
-                 generator's Java model templates (import org.openapitools.jackson.nullable.JsonNullable),
-                 even though chat-agent.yaml doesn't currently mark any property nullable: true. -->
             <groupId>org.openapitools</groupId>
             <artifactId>jackson-databind-nullable</artifactId>
             <version>0.2.6</version>
@@ -36,13 +33,10 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
         <dependency>
-            <!-- WebClient/Flux (GatewayClient) and the reactive SSE codec (ChatController) — used
-                 to come in transitively via Spring AI's RAG/vector-store starters. -->
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
         <dependency>
-            <!-- Page/PageRequest for the chat-memory pagination endpoint. -->
             <groupId>org.springframework.data</groupId>
             <artifactId>spring-data-commons</artifactId>
         </dependency>

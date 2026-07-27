@@ -28,8 +28,6 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
         <dependency>
-            <!-- WebClient (ChatAgentClient/ChatAgentConfig) — used to come in transitively via
-                 Spring AI's starter. -->
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
@@ -43,8 +41,6 @@
             <artifactId>langchain4j-open-ai</artifactId>
         </dependency>
         <dependency>
-            <!-- LangChain4j has no text-to-speech abstraction at all (verified: zero TTS classes
-                 in any artifact) — used directly here only for speech synthesis. -->
             <groupId>com.openai</groupId>
             <artifactId>openai-java</artifactId>
             <version>4.41.0</version>
@@ -159,11 +155,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <!-- No jacoco-check enforcement yet: this module is newly split out of llm-chat and doesn't
-         have llm-chat-agent's test depth yet. Coverage reports still generate (prepare-agent/
-         report inherited from super-pom) — add a jacoco-check execution here (see
-         llm-chat-agent/pom.xml) once the test suite catches up. -->
 
     <build>
         <plugins>
