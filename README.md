@@ -1,8 +1,8 @@
-# <span style="color:hsl(316,68%,44%)">LLM LangChain4j — A LangChain4j Learning Backend</span>
+# <span style="color:hsl(316,80%,58%)">LLM LangChain4j — A LangChain4j Learning Backend</span>
 
 <img src="image/langchain4j-logo.png" alt="logo" width="80"/>
 
-## <span style="color:hsl(324,68%,44%)">Table of contents</span>
+## <span style="color:hsl(94,80%,58%)">Table of contents</span>
 
 1. 🗺️ [Component Architecture](#-component-architecture)
 2. 🚪 [Architecture — AiServices Proxy Pattern](#-architecture--aiservices-proxy-pattern)
@@ -41,7 +41,7 @@ the original Spring AI project for infra continuity, not a library reference).
 > [`llm-rag-pipeline`](../llm-rag-pipeline) (ingestion + retrieval). This repo follows the same
 > security, observability and project conventions as those two.
 
-## <span style="color:hsl(332,68%,44%)">🗺️ Component Architecture</span>
+## <span style="color:hsl(231,80%,58%)">🗺️ Component Architecture</span>
 
 Each module is an independently deployable Spring Boot process (own port, own `application.yml`,
 own Postgres database); nothing is shared at runtime except the Postgres instance and Redis
@@ -126,7 +126,7 @@ rather than duplicating chat logic; and both `llm-chat-agent` and `llm-image` fo
 `Backend` strategy layer between the gateway path and the direct-OpenAI-via-LangChain4j path,
 selected by `app.gateway.enabled` at startup — never per-request.
 
-## <span style="color:hsl(339,68%,44%)">🚪 Architecture — AiServices Proxy Pattern</span>
+## <span style="color:hsl(9,80%,58%)">🚪 Architecture — AiServices Proxy Pattern</span>
 
 LangChain4j's `AiServices` turns a plain Java interface into a fully wired LLM client at construction time. The annotations below are the primary contract between the interface declaration and the framework:
 
@@ -156,7 +156,7 @@ TokenStream chatStream(
 );
 ```
 
-### <span style="color:hsl(347,68%,44%)">Sequence — resolving `ChatAssistant.chat(...)` to an actual model call</span>
+### <span style="color:hsl(146,80%,58%)">Sequence — resolving `ChatAssistant.chat(...)` to an actual model call</span>
 
 The diagram below traces one `POST /api/v1/chat` request end to end through every collaborator
 `AIConfig` wired onto the `ChatAssistant` proxy at startup — guardrail, memory, RAG retrieval
@@ -253,7 +253,7 @@ Two details this sequence makes concrete:
 
 ---
 
-## <span style="color:hsl(355,68%,44%)">🛠️ Technology Stack</span>
+## <span style="color:hsl(284,80%,58%)">🛠️ Technology Stack</span>
 
 <ul>
 
@@ -267,7 +267,7 @@ Two details this sequence makes concrete:
 
 </ul>
 
-## <span style="color:hsl(3,68%,44%)">🏗️ Layout</span>
+## <span style="color:hsl(61,80%,50%)">🏗️ Layout</span>
 
 Each module is a self-contained Spring Boot app under `com.org.llm.*`; the package name repeats
 across modules but they never share a classpath at runtime.
@@ -300,15 +300,15 @@ across modules but they never share a classpath at runtime.
 
 </ul>
 
-## <span style="color:hsl(11,68%,44%)">🚀 Getting Started</span>
+## <span style="color:hsl(199,80%,58%)">🚀 Getting Started</span>
 
-### <span style="color:hsl(19,68%,44%)">1. Start infrastructure</span>
+### <span style="color:hsl(336,80%,58%)">1. Start infrastructure</span>
 
 ```bash
 docker compose up -d        # Postgres, Redis, RedisInsight + Prometheus/Grafana/Tempo/Loki
 ```
 
-### <span style="color:hsl(26,68%,44%)">2. Configure secrets</span>
+### <span style="color:hsl(114,80%,58%)">2. Configure secrets</span>
 
 ```bash
 export OPENAI_API_KEY=sk-...
@@ -318,7 +318,7 @@ export WEATHER_API_KEY=...            # only for llm-chat-agent's weather tool
 (No Stability AI key — LangChain4j has no Stability AI integration, so `llm-image` now generates
 with OpenAI Dall-E using the same `OPENAI_API_KEY`.)
 
-### <span style="color:hsl(34,68%,44%)">3. Run each module you need</span>
+### <span style="color:hsl(251,80%,58%)">3. Run each module you need</span>
 
 ```bash
 ./mvnw -pl llm-chat-agent spring-boot:run    # port 8082
@@ -330,7 +330,7 @@ with OpenAI Dall-E using the same `OPENAI_API_KEY`.)
 Or build/test the whole reactor from the root: `./mvnw verify`. Each module serves under context
 path **`/ai`** on its own port (e.g. http://localhost:8082/ai).
 
-## <span style="color:hsl(42,68%,32%)">🔑 Authentication</span>
+## <span style="color:hsl(29,80%,58%)">🔑 Authentication</span>
 
 <ul>
 
@@ -372,9 +372,9 @@ echo "X-API-Key: $raw"
 
 </ul>
 
-## <span style="color:hsl(50,68%,32%)">🔐 Prompt Injection Security</span>
+## <span style="color:hsl(166,80%,58%)">🔐 Prompt Injection Security</span>
 
-### <span style="color:hsl(58,68%,32%)">LangChain4j InputGuardrail (`BlockedPhraseGuardrail`)</span>
+### <span style="color:hsl(304,80%,58%)">LangChain4j InputGuardrail (`BlockedPhraseGuardrail`)</span>
 
 `BlockedPhraseGuardrail` implements LangChain4j's `InputGuardrail` interface and runs before every
 model call. Unlike Spring AI's advisor chain — where `SafeGuardAdvisor.order(Integer.MIN_VALUE)` was
@@ -411,7 +411,7 @@ No code change or redeployment required — patterns are read from `application.
 variable overrides) at startup. Set `INJECTION_GUARD_ENABLED=false` to disable entirely for
 development runs that don't need the guard.
 
-### <span style="color:hsl(66,68%,32%)">LangChain4j moderation (`@Moderate`)</span>
+### <span style="color:hsl(81,80%,58%)">LangChain4j moderation (`@Moderate`)</span>
 
 The `ChatAssistant` AiService method is annotated with `@Moderate`, backed by an
 `OpenAiModerationModel` bean. LangChain4j calls OpenAI's Moderation API automatically before
@@ -422,7 +422,7 @@ added here specifically to exercise LangChain4j's built-in capability.
 
 ---
 
-## <span style="color:hsl(73,68%,32%)">🔀 Routing through llm-gateway</span>
+## <span style="color:hsl(219,80%,58%)">🔀 Routing through llm-gateway</span>
 
 <ul>
 
@@ -454,9 +454,9 @@ added here specifically to exercise LangChain4j's built-in capability.
 
 </ul>
 
-## <span style="color:hsl(81,68%,32%)">📡 Endpoints</span>
+## <span style="color:hsl(356,80%,58%)">📡 Endpoints</span>
 
-### <span style="color:hsl(89,68%,32%)">`llm-chat-agent` (port 8082, under `/ai`)</span>
+### <span style="color:hsl(134,80%,58%)">`llm-chat-agent` (port 8082, under `/ai`)</span>
 
 | Method | Path                          | Description                                                                                            |
 |--------|-------------------------------|--------------------------------------------------------------------------------------------------------|
@@ -469,7 +469,7 @@ added here specifically to exercise LangChain4j's built-in capability.
 | POST   | `/api/v1/text-to-sql`         | NL → guarded read-only SQL + results                                                                   |
 | POST   | `/api/v1/rag/query-transform` | Run a query through a single pre-retrieval transformer (rewrite/translate/compress/multi-query-expand) |
 
-### <span style="color:hsl(97,68%,32%)">`llm-audio` (port 8083, under `/ai`)</span>
+### <span style="color:hsl(271,80%,58%)">`llm-audio` (port 8083, under `/ai`)</span>
 
 | Method | Path                       | Description                                                  |
 |--------|----------------------------|--------------------------------------------------------------|
@@ -479,14 +479,14 @@ added here specifically to exercise LangChain4j's built-in capability.
 | POST   | `/api/v1/audio/to-speech`  | Text-to-speech                                               |
 | POST   | `/api/v1/audio/upload`     | Upload + process an audio file                               |
 
-### <span style="color:hsl(105,68%,32%)">`llm-image` (port 8084, under `/ai`)</span>
+### <span style="color:hsl(49,80%,50%)">`llm-image` (port 8084, under `/ai`)</span>
 
 | Method | Path                      | Description                                 |
 |--------|---------------------------|---------------------------------------------|
 | POST   | `/api/v1/images/caption`  | Caption an image                            |
 | GET    | `/api/v1/images/generate` | Generate an image (gateway or local Dall-E) |
 
-### <span style="color:hsl(113,68%,32%)">`llm-playground` (port 8085, under `/ai`)</span>
+### <span style="color:hsl(186,80%,58%)">`llm-playground` (port 8085, under `/ai`)</span>
 
 | Method | Path                           | Description                                    |
 |--------|--------------------------------|------------------------------------------------|
@@ -495,14 +495,14 @@ added here specifically to exercise LangChain4j's built-in capability.
 | POST   | `/api/v1/playground/summarize` | Plain-text summarization, parameterized length |
 | POST   | `/api/v1/playground/moderate`  | Standalone moderation check (no chat involved) |
 
-## <span style="color:hsl(120,68%,32%)">📊 Observability</span>
+## <span style="color:hsl(324,80%,58%)">📊 Observability</span>
 
 See [`PROMETHEUS_GRAFANA_SETUP.md`](./PROMETHEUS_GRAFANA_SETUP.md). Health at
 `/ai/actuator/health`, Prometheus scrape at `/ai/actuator/prometheus`, Grafana at
 http://localhost:3000 (admin/admin) with the auto-provisioned **LLM Chat** dashboard.
 (`llm-playground` has no actuator/observability wiring — it's a bare demo module.)
 
-### <span style="color:hsl(128,68%,32%)">Actuator endpoints</span>
+### <span style="color:hsl(101,80%,58%)">Actuator endpoints</span>
 
 | Endpoint                  | Description                                                                        |
 |---------------------------|------------------------------------------------------------------------------------|
@@ -519,7 +519,7 @@ http://localhost:3000 (admin/admin) with the auto-provisioned **LLM Chat** dashb
 
 </ul>
 
-## <span style="color:hsl(136,68%,32%)">🧱 Configuration</span>
+## <span style="color:hsl(239,80%,58%)">🧱 Configuration</span>
 
 <ul>
 
@@ -530,7 +530,7 @@ http://localhost:3000 (admin/admin) with the auto-provisioned **LLM Chat** dashb
 
 </ul>
 
-## <span style="color:hsl(144,68%,32%)">✅ Build & Test</span>
+## <span style="color:hsl(16,80%,58%)">✅ Build & Test</span>
 
 ```bash
 ./mvnw verify        # compile, test, JaCoCo coverage report (target/site/jacoco)
@@ -549,14 +549,14 @@ http://localhost:3000 (admin/admin) with the auto-provisioned **LLM Chat** dashb
 
 </ul>
 
-## <span style="color:hsl(152,68%,36%)">🧰 Technology Deep Dive</span>
+## <span style="color:hsl(154,80%,58%)">🧰 Technology Deep Dive</span>
 
 This section explains every significant library, framework, database, and infrastructure component used in this
 project — what it is and exactly how it is wired up here.
 
 ---
 
-### <span style="color:hsl(159,68%,36%)">Spring Boot 4.1.0</span>
+### <span style="color:hsl(291,80%,58%)">Spring Boot 4.1.0</span>
 
 **What it is.**
 
@@ -589,7 +589,7 @@ project — what it is and exactly how it is wired up here.
 
 ---
 
-### <span style="color:hsl(167,68%,36%)">LangChain4j 1.16.3</span>
+### <span style="color:hsl(69,80%,50%)">LangChain4j 1.16.3</span>
 
 **What it is.**
 
@@ -779,7 +779,7 @@ wires `CompressingQueryTransformer` and `ExpandingQueryTransformer` together via
 
 ---
 
-### <span style="color:hsl(175,68%,36%)">OpenAI API</span>
+### <span style="color:hsl(206,80%,58%)">OpenAI API</span>
 
 **What it is.**
 
@@ -813,7 +813,7 @@ wires `CompressingQueryTransformer` and `ExpandingQueryTransformer` together via
 
 ---
 
-### <span style="color:hsl(183,68%,36%)">LangChain4j vs Spring AI 2.0 — Feature Comparison</span>
+### <span style="color:hsl(344,80%,58%)">LangChain4j vs Spring AI 2.0 — Feature Comparison</span>
 
 Built by inspecting the actual `dev.langchain4j` jars (`javap`, `unzip -l`) and the LangChain4j
 GitHub source for the version pinned here (1.16.3), not secondhand blog posts — several
@@ -852,7 +852,7 @@ capabilities below don't show up clearly in the online docs.
 
 ---
 
-### <span style="color:hsl(191,68%,36%)">PostgreSQL 18</span>
+### <span style="color:hsl(121,80%,58%)">PostgreSQL 18</span>
 
 **What it is.**
 
@@ -889,7 +889,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(199,68%,36%)">Flyway</span>
+### <span style="color:hsl(259,80%,58%)">Flyway</span>
 
 **What it is.**
 
@@ -918,7 +918,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(206,68%,44%)">Redis</span>
+### <span style="color:hsl(36,80%,58%)">Redis</span>
 
 **What it is.**
 
@@ -951,7 +951,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(214,68%,44%)">Spring Security</span>
+### <span style="color:hsl(174,80%,58%)">Spring Security</span>
 
 **What it is.**
 
@@ -986,7 +986,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(222,68%,44%)">Micrometer + Prometheus</span>
+### <span style="color:hsl(311,80%,58%)">Micrometer + Prometheus</span>
 
 **What it is.**
 
@@ -1015,7 +1015,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(230,68%,44%)">Grafana</span>
+### <span style="color:hsl(89,80%,58%)">Grafana</span>
 
 **What it is.**
 
@@ -1042,7 +1042,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(238,68%,44%)">Grafana Tempo</span>
+### <span style="color:hsl(226,80%,58%)">Grafana Tempo</span>
 
 **What it is.**
 
@@ -1070,7 +1070,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(246,68%,44%)">Grafana Loki</span>
+### <span style="color:hsl(4,80%,58%)">Grafana Loki</span>
 
 **What it is.**
 
@@ -1096,7 +1096,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(253,68%,44%)">Spring WebFlux / Project Reactor (`Flux`)</span>
+### <span style="color:hsl(141,80%,58%)">Spring WebFlux / Project Reactor (`Flux`)</span>
 
 **What it is.**
 
@@ -1132,7 +1132,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(261,68%,44%)">LangChain4j Document Loading (Apache PDFBox)</span>
+### <span style="color:hsl(279,80%,58%)">LangChain4j Document Loading (Apache PDFBox)</span>
 
 **What it is.**
 
@@ -1166,7 +1166,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(269,68%,44%)">JDBC Chat Memory (LangChain4j `ChatMemoryStore`)</span>
+### <span style="color:hsl(56,80%,50%)">JDBC Chat Memory (LangChain4j `ChatMemoryStore`)</span>
 
 **What it is.**
 
@@ -1198,7 +1198,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(277,68%,44%)">Lombok</span>
+### <span style="color:hsl(194,80%,58%)">Lombok</span>
 
 **What it is.**
 
@@ -1231,7 +1231,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(285,68%,44%)">Testcontainers</span>
+### <span style="color:hsl(331,80%,58%)">Testcontainers</span>
 
 **What it is.**
 
@@ -1263,7 +1263,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(293,68%,44%)">JaCoCo</span>
+### <span style="color:hsl(109,80%,58%)">JaCoCo</span>
 
 **What it is.**
 
@@ -1287,7 +1287,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(300,68%,44%)">Git Commit ID Maven Plugin</span>
+### <span style="color:hsl(246,80%,58%)">Git Commit ID Maven Plugin</span>
 
 **What it is.**
 
@@ -1313,7 +1313,7 @@ the source project — renaming infrastructure identifiers was out of scope for 
 
 ---
 
-### <span style="color:hsl(308,68%,44%)">Docker Compose</span>
+### <span style="color:hsl(24,80%,58%)">Docker Compose</span>
 
 **What it is.**
 
