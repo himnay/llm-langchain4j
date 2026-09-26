@@ -37,8 +37,8 @@ Redis, observability stack). Each module is its own Spring Boot app with its own
 (`spring_ai`, `spring_ai_audio`, `spring_ai_image` — see `observability/init-db/`; names kept from
 the original Spring AI project for infra continuity, not a library reference).
 
-> Sibling services: [`llm-gateway`](../llm-gateway) (multi-provider routing + guardrails) and
-> [`llm-rag-pipeline`](../llm-rag-pipeline) (ingestion + retrieval). This repo follows the same
+> Sibling services: [`llm-gateway`](https://github.com/himnay/llm-gateway) (multi-provider routing + guardrails) and
+> [`llm-rag-pipeline`](https://github.com/himnay/llm-rag/tree/main/llm-rag-pipeline) (ingestion + retrieval). This repo follows the same
 > security, observability and project conventions as those two.
 
 ## <span style="color:hsl(231,80%,58%)">🗺️ Component Architecture</span>
@@ -532,9 +532,16 @@ http://localhost:3000 (admin/admin) with the auto-provisioned **LLM Chat** dashb
 
 ## <span style="color:hsl(16,80%,58%)">✅ Build & Test</span>
 
+Prerequisites: JDK 25, Docker, and the parent POM chain installed once, because
+`com.org.llm:super-pom` and `learning-bom` are not on Maven Central:
+
 ```bash
+(cd ~/projects/learning-bom && mvn -N install)
+(cd ~/projects/super-pom && mvn -N install)
 ./mvnw verify        # compile, test, JaCoCo coverage report (target/site/jacoco)
 ```
+
+CI (`.github/workflows/ci.yml`) runs the same build on every push.
 
 <ul>
 
@@ -546,6 +553,15 @@ http://localhost:3000 (admin/admin) with the auto-provisioned **LLM Chat** dashb
 - Flyway migrations and all JDBC queries in tests run against the real Postgres 18 container
 - Validator logic (`SqlValidator`, `AudioValidator`) and the new `BlockedPhraseGuardrail` are covered by plain unit
   tests with no container dependency
+- `SqlValidator` checks every table in every `FROM` list (comma joins included), `JOIN` target and subquery against
+  the four-table allow-list, rejects quoted identifiers, and denies `SELECT ... INTO` plus functions that read server
+  files, run dynamic SQL, sleep or change state (`pg_*`, `lo_*`, `dblink*`, `set_config`, `current_setting`,
+  `*_to_xml`, `nextval`, `setval`)
+- `ReadOnlyQueryExecutor` runs the generated SQL in a read-only transaction with a timeout
+  (`app.text2sql.query-timeout-seconds`, default 10); `ReadOnlyQueryExecutorTest` proves against a real Postgres
+  container that a write which slips past the patterns is refused and a slow query is cancelled
+- `/api/v1/files/read` only accepts a plain PDF `fileName` (e.g. `policy.pdf`), so `../application.yaml` can't read
+  other classpath resources
 
 </ul>
 
