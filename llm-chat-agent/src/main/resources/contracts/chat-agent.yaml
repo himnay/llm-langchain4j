@@ -149,6 +149,10 @@ components:
         fileName:
           type: string
           minLength: 1
+          # A plain PDF name under classpath:files/ — no path separators, so "../application.yaml"
+          # can't read other classpath resources and send them to the model.
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*\.pdf$'
+          example: policy.pdf
           # NOTE (fidelity loss): original @NotBlank(message = "fileName is required")
           # custom message is not reproducible via standard required/minLength codegen;
           # generated validation falls back to the default Jakarta NotBlank message.
