@@ -19,7 +19,7 @@
 13. 🧰 [Technology Deep Dive](#-technology-deep-dive)
 
 A Maven **multi-module** reactor ported from a sibling project (`llm-chat`) that used Spring AI
-end-to-end. Every Spring AI integration has been replaced with **LangChain4j 1.16.3** — the goal
+end-to-end. Every Spring AI integration has been replaced with **LangChain4j 1.20.1** — the goal
 of this repo is to learn LangChain4j's real capabilities by rebuilding a working backend on top of
 it, not to ship a product. Four independently runnable modules:
 
@@ -30,8 +30,8 @@ it, not to ship a product. Four independently runnable modules:
 | [`llm-image`](./llm-image)           | 8084 | Image captioning (multimodal chat) and AI image generation (OpenAI Dall-E)                                                                                   |
 | [`llm-playground`](./llm-playground) | 8085 | LangChain4j capabilities the other modules don't exercise: enum classification, structured extraction, summarization, standalone moderation                  |
 
-All four share this repo's root `pom.xml` (a reactor parent extending `super-pom`, importing
-`dev.langchain4j:langchain4j-bom:1.16.3`), the Maven wrapper, and `docker-compose.yml` (Postgres,
+All four share this repo's root `pom.xml` (a reactor parent extending `super-pom`, whose
+`learning-bom` imports `dev.langchain4j:langchain4j-bom:1.20.1`), the Maven wrapper, and `docker-compose.yml` (Postgres,
 Redis, observability stack). Each module is its own Spring Boot app with its own
 `application.yml`, API-key auth (`llm-playground` excepted — it has no persistence), and database
 (`spring_ai`, `spring_ai_audio`, `spring_ai_image` — see `observability/init-db/`; names kept from
@@ -257,7 +257,7 @@ Two details this sequence makes concrete:
 
 <ul>
 
-- **Spring Boot** 4.1.0 · **LangChain4j** 1.16.3 · **Java** 25 · **Maven**
+- **Spring Boot** 4.1.1 · **LangChain4j** 1.20.1 · **Java** 25 · **Maven**
 - **OpenAI** (chat, embeddings, moderation, audio transcription, image generation) · the official
   **OpenAI Java SDK** directly for text-to-speech (LangChain4j has no TTS abstraction)
 - **PostgreSQL** — chat memory, contacts, text-to-SQL data, API keys, document-ingestion tracking
@@ -375,6 +375,12 @@ echo "X-API-Key: $raw"
 ## <span style="color:hsl(166,80%,58%)">🔐 Prompt Injection Security</span>
 
 ### <span style="color:hsl(304,80%,58%)">LangChain4j InputGuardrail (`BlockedPhraseGuardrail`)</span>
+
+<p align="center">
+  <img src="image/langchain4j-guardrails.png" alt="An AI Service runs input guardrails before invoking the LLM and output guardrails on the reply" width="560"/>
+</p>
+
+<p align="center"><sub>Input guardrails run before the model call, output guardrails on the way back. Diagram: <a href="https://docs.langchain4j.dev/">LangChain4j documentation</a>, Apache-2.0.</sub></p>
 
 `BlockedPhraseGuardrail` implements LangChain4j's `InputGuardrail` interface and runs before every
 model call. Unlike Spring AI's advisor chain — where `SafeGuardAdvisor.order(Integer.MIN_VALUE)` was
@@ -572,7 +578,7 @@ project — what it is and exactly how it is wired up here.
 
 ---
 
-### <span style="color:hsl(291,80%,58%)">Spring Boot 4.1.0</span>
+### <span style="color:hsl(291,80%,58%)">Spring Boot 4.1.1</span>
 
 **What it is.**
 
@@ -605,7 +611,13 @@ project — what it is and exactly how it is wired up here.
 
 ---
 
-### <span style="color:hsl(69,80%,50%)">LangChain4j 1.16.3</span>
+### <span style="color:hsl(69,80%,50%)">LangChain4j 1.20.1</span>
+
+<p align="center">
+  <img src="image/langchain4j-components.png" alt="LangChain4j building blocks: chains and AI services on top of basics (language models, prompt templates, output parsers, memory) and RAG (document loaders, splitters, embedding models, embedding stores)" width="520"/>
+</p>
+
+<p align="center"><sub>The building blocks this repo uses, from AI Services down to embedding stores. Diagram: <a href="https://docs.langchain4j.dev/">LangChain4j documentation</a>, Apache-2.0.</sub></p>
 
 **What it is.**
 
@@ -617,8 +629,8 @@ project — what it is and exactly how it is wired up here.
   clients), a modular RAG pipeline (`RetrievalAugmentor`, query transformers, content
   retrievers/aggregators/injectors), `@Tool`/`@P` function calling, structured output via
   reflection-derived JSON schemas, and a guardrail system (`InputGuardrail`/`OutputGuardrail`)
-- Pinned here via `dev.langchain4j:langchain4j-bom:1.16.3` imported in the root `pom.xml`'s
-  `dependencyManagement` — every module's `langchain4j`/`langchain4j-open-ai` version comes from
+- Managed through `learning-bom` 3.0.1 (inherited via `super-pom`), which imports
+  `dev.langchain4j:langchain4j-bom:1.20.1` — every module's `langchain4j`/`langchain4j-open-ai` version comes from
   that BOM; only the **community** modules (`langchain4j-community-redis`) sit on their own
   separate beta version track and need an explicit version
 
@@ -832,10 +844,10 @@ wires `CompressingQueryTransformer` and `ExpandingQueryTransformer` together via
 ### <span style="color:hsl(344,80%,58%)">LangChain4j vs Spring AI 2.0 — Feature Comparison</span>
 
 Built by inspecting the actual `dev.langchain4j` jars (`javap`, `unzip -l`) and the LangChain4j
-GitHub source for the version pinned here (1.16.3), not secondhand blog posts — several
+GitHub source (written against 1.16.3; the build has since moved to 1.20.1, so re-check any version-sensitive row), not secondhand blog posts — several
 capabilities below don't show up clearly in the online docs.
 
-| Capability                   | Spring AI 2.0                                                                                                                                        | LangChain4j 1.16.3                                                                                                                                                                                                           | Notes                                                                                                                                                                                    |
+| Capability                   | Spring AI 2.0                                                                                                                                        | LangChain4j 1.20.1                                                                                                                                                                                                           | Notes                                                                                                                                                                                    |
 |------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Chat model abstraction       | `ChatModel` + `ChatClient` (fluent builder, per-call advisors/tools)                                                                                 | `ChatModel` (sync) + `StreamingChatModel`; `AiServices` (declarative proxy, fixed at build time)                                                                                                                             | Two different mental models: Spring AI lets you reconfigure per call; LangChain4j fixes an interface's behavior once and passes per-call concerns as method parameters                   |
 | Streaming                    | `ChatClient.stream()` → `Flux<String>`/`ChatClientResponse`                                                                                          | `StreamingChatModel` + `TokenStream` (callback-based: `onPartialResponse`, `onRetrieved`, `onCompleteResponse`, `onError`)                                                                                                   | LangChain4j's `TokenStream.onRetrieved` gives RAG citations natively mid-stream; Spring AI needs the advisor-context trick (`DOCUMENT_CONTEXT`)                                          |
