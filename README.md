@@ -257,7 +257,7 @@ Two details this sequence makes concrete:
 
 <ul>
 
-- **Spring Boot** 4.1.1 · **LangChain4j** 1.20.1 · **Java** 25 · **Maven**
+- **Spring Boot** 4.1.2 · **LangChain4j** 1.23.0 · **Java** 27 · **Maven**
 - **OpenAI** (chat, embeddings, moderation, audio transcription, image generation) · the official
   **OpenAI Java SDK** directly for text-to-speech (LangChain4j has no TTS abstraction)
 - **PostgreSQL** — chat memory, contacts, text-to-SQL data, API keys, document-ingestion tracking
